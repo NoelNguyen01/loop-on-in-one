@@ -96,4 +96,4 @@ class Fun(commands.Cog):
         embed.add_field(name="👤 Người", value=target.mention, inline=True)
         embed.add_field(name="💖 Độ gay", value=f"{percentage}%", inline=True)
         
-        bar = "🟩" * (percentage //
+        bar = "🟩" * (percentage //) 
