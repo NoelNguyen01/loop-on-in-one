@@ -7,27 +7,6 @@ class Fun(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # Lệnh slash /meme
-    @app_commands.command(name="meme", description="😂 Lấy meme ngẫu nhiên")
-    async def slash_meme(self, interaction: discord.Interaction):
-        """Lệnh slash cho meme"""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get("https://meme-api.com/gimme") as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        embed = discord.Embed(
-                            title="😂 Meme cho bạn",
-                            color=0xFF6B6B
-                        )
-                        embed.set_image(url=data["url"])
-                        embed.set_footer(text=f"👍 {data['ups']} | u/{data['author']}")
-                        await interaction.response.send_message(embed=embed)
-                    else:
-                        await interaction.response.send_message("❌ Không thể lấy meme lúc này!")
-        except:
-            await interaction.response.send_message("❌ Không thể lấy meme lúc này!")
-
     # Lệnh slash /8ball
     @app_commands.command(name="8ball", description="🎱 Hỏi ý kiến bóng ma thuật")
     @app_commands.describe(question="Câu hỏi của bạn")
