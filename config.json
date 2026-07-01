@@ -1,5 +1,7 @@
 {
-  "token": "YOUR_BOT_TOKEN",
   "prefix": "!",
-  "language": "en"
+  "bot_name": "LOOP ON IN ONE",
+  "embed_color": "#00D4FF",
+  "version": "1.0.0",
+  "description": "Discord bot đa năng - Loop On In One"
 }
