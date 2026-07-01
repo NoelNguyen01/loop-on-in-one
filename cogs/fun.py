@@ -1,18 +1,16 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import random
-import aiohttp
-import asyncio
 
 class Fun(commands.Cog):
-    """😂 Lệnh giải trí"""
-    
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="meme", help="😂 Lấy meme ngẫu nhiên")
-    async def meme(self, ctx):
-        """Lấy meme từ Reddit"""
+    # Lệnh slash /meme
+    @app_commands.command(name="meme", description="😂 Lấy meme ngẫu nhiên")
+    async def slash_meme(self, interaction: discord.Interaction):
+        """Lệnh slash cho meme"""
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://meme-api.com/gimme") as response:
@@ -24,31 +22,23 @@ class Fun(commands.Cog):
                         )
                         embed.set_image(url=data["url"])
                         embed.set_footer(text=f"👍 {data['ups']} | u/{data['author']}")
-                        await ctx.send(embed=embed)
+                        await interaction.response.send_message(embed=embed)
                     else:
-                        await ctx.send("❌ Không thể lấy meme lúc này!")
+                        await interaction.response.send_message("❌ Không thể lấy meme lúc này!")
         except:
-            await ctx.send("❌ Không thể lấy meme lúc này!")
+            await interaction.response.send_message("❌ Không thể lấy meme lúc này!")
 
-    @commands.command(name="8ball", help="🎱 Hỏi ý kiến bóng ma thuật")
-    async def eight_ball(self, ctx, *, question):
-        """Trả lời câu hỏi ngẫu nhiên"""
+    # Lệnh slash /8ball
+    @app_commands.command(name="8ball", description="🎱 Hỏi ý kiến bóng ma thuật")
+    @app_commands.describe(question="Câu hỏi của bạn")
+    async def slash_8ball(self, interaction: discord.Interaction, question: str):
         responses = [
-            "Chắc chắn rồi! ✅", 
-            "Có thể là như vậy 🤔", 
-            "Đừng hy vọng quá ❌",
-            "Chắc chắn không! ❌", 
-            "Hỏi lại sau nhé 🔮", 
-            "Rất có thể ✅",
-            "Tương lai mờ mịt 🌫️", 
-            "Không đời nào! ❌", 
-            "Đồng ý! ✅",
-            "Tôi không nghĩ vậy 🤷", 
-            "Hãy tin vào bản thân 💪",
-            "Có thể, nhưng không chắc 😐", 
-            "Tất nhiên là có! 🌟"
+            "Chắc chắn rồi! ✅", "Có thể là như vậy 🤔", "Đừng hy vọng quá ❌",
+            "Chắc chắn không! ❌", "Hỏi lại sau nhé 🔮", "Rất có thể ✅",
+            "Tương lai mờ mịt 🌫️", "Không đời nào! ❌", "Đồng ý! ✅",
+            "Tôi không nghĩ vậy 🤷", "Hãy tin vào bản thân 💪",
+            "Có thể, nhưng không chắc 😐", "Tất nhiên là có! 🌟"
         ]
-        
         embed = discord.Embed(
             title="🎱 Bóng ma thuật",
             color=0x9B59B6
@@ -56,47 +46,14 @@ class Fun(commands.Cog):
         embed.add_field(name="❓ Câu hỏi", value=question, inline=False)
         embed.add_field(name="🎯 Câu trả lời", value=random.choice(responses), inline=False)
         embed.set_footer(text="LOOP ON IN ONE")
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
-    @commands.command(name="guess", help="🔢 Game đoán số (1-100)")
-    async def guess(self, ctx):
-        """Game đoán số từ 1 đến 100"""
-        number = random.randint(1, 100)
-        attempts = 0
-        max_attempts = 10
-        
-        await ctx.send("🔢 Tôi đang nghĩ đến một số từ 1 đến 100. Bạn có 10 lần đoán!")
-        
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-        
-        while attempts < max_attempts:
-            try:
-                msg = await self.bot.wait_for('message', timeout=30.0, check=check)
-                guess = int(msg.content)
-                attempts += 1
-                
-                if guess < number:
-                    await ctx.send(f"📈 Cao hơn! (Còn {max_attempts - attempts} lần)")
-                elif guess > number:
-                    await ctx.send(f"📉 Thấp hơn! (Còn {max_attempts - attempts} lần)")
-                else:
-                    await ctx.send(f"🎉 Chúc mừng! Bạn đã đoán đúng số **{number}** trong {attempts} lần!")
-                    return
-            except ValueError:
-                await ctx.send("⚠️ Vui lòng nhập số hợp lệ!")
-            except asyncio.TimeoutError:
-                await ctx.send(f"⏰ Hết thời gian! Đáp án là **{number}**")
-                return
-        
-        await ctx.send(f"😢 Hết lượt! Đáp án là **{number}**")
-
-    @commands.command(name="gay", help="🌈 Đoán độ gay")
-    async def gay(self, ctx, member: discord.Member = None):
-        """Đoán độ gay của ai đó"""
-        target = member or ctx.author
+    # Lệnh slash /gay
+    @app_commands.command(name="gay", description="🌈 Đoán độ gay của ai đó")
+    @app_commands.describe(member="Người bạn muốn đoán")
+    async def slash_gay(self, interaction: discord.Interaction, member: discord.Member = None):
+        target = member or interaction.user
         percentage = random.randint(0, 100)
-        
         embed = discord.Embed(
             title="🌈 Máy đo độ gay",
             color=0xFF69B4
@@ -104,7 +61,6 @@ class Fun(commands.Cog):
         embed.add_field(name="👤 Người", value=target.mention, inline=True)
         embed.add_field(name="💖 Độ gay", value=f"{percentage}%", inline=True)
         
-        # Tạo thanh tiến trình
         green = percentage // 10
         red = 10 - green
         bar = "🟩" * green + "🟥" * red
@@ -117,7 +73,7 @@ class Fun(commands.Cog):
         else:
             embed.set_footer(text="❓ Chưa có dấu hiệu gì!")
         
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Fun(bot))
