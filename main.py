@@ -313,7 +313,6 @@ async def slash_userinfo(interaction: discord.Interaction, member: discord.Membe
 # ==== EVENTS ====
 @bot.event
 async def on_ready():
-    """Sự kiện khi bot sẵn sàng"""
     print("=" * 60)
     print(f"✅ {config['bot_name']} đã hoạt động!")
     print(f"🤖 Tên: {bot.user.name}")
@@ -323,7 +322,7 @@ async def on_ready():
     print(f"👥 Số server: {len(bot.guilds)}")
     print("=" * 60)
     
-    # Đồng bộ lệnh slash
+    # ==== ĐỒNG BỘ LỆNH SLASH ====
     try:
         synced = await bot.tree.sync()
         print(f"✅ Đã đồng bộ {len(synced)} lệnh slash!")
@@ -337,7 +336,6 @@ async def on_ready():
         activity=discord.Game(name=f"🔄 LOOP ON IN ONE | {PREFIX}help"),
         status=discord.Status.online
     )
-
 @bot.event
 async def on_connect():
     """Sự kiện khi kết nối thành công"""
