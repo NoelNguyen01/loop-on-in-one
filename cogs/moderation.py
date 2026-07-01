@@ -1,141 +1,47 @@
 import discord
 from discord.ext import commands
-import asyncio
-from datetime import datetime, timedelta
+from discord import app_commands
 
 class Moderation(commands.Cog):
-    """🛡️ Lệnh quản trị server"""
-    
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="kick", help="🦶 Kick thành viên khỏi server")
-    @commands.has_permissions(kick_members=True)
-    async def kick(self, ctx, member: discord.Member, *, reason="Không có lý do"):
-        """Kick thành viên khỏi server"""
-        await member.kick(reason=reason)
-        
-        embed = discord.Embed(
-            title="✅ Đã Kick",
-            description=f"Đã kick {member.mention}",
-            color=0xFF6B6B
-        )
-        embed.add_field(name="👤 Người thực hiện", value=ctx.author.mention, inline=True)
-        embed.add_field(name="📝 Lý do", value=reason, inline=False)
-        embed.set_footer(text=f"ID: {member.id}")
-        await ctx.send(embed=embed)
-        
-        try:
-            await member.send(f"🔨 Bạn đã bị kick khỏi **{ctx.guild.name}**\n📝 Lý do: {reason}")
-        except:
-            pass
-
-    @commands.command(name="ban", help="⛔ Cấm thành viên vĩnh viễn")
-    @commands.has_permissions(ban_members=True)
-    async def ban(self, ctx, member: discord.Member, *, reason="Không có lý do"):
-        """Ban thành viên khỏi server"""
+    @app_commands.command(name="ban", description="⛔ Cấm thành viên vĩnh viễn")
+    @app_commands.describe(member="Thành viên cần ban", reason="Lý do ban")
+    @app_commands.checks.has_permissions(ban_members=True)
+    async def slash_ban(self, interaction: discord.Interaction, member: discord.Member, reason: str = "Không có lý do"):
         await member.ban(reason=reason)
-        
         embed = discord.Embed(
             title="✅ Đã Ban",
             description=f"Đã ban {member.mention}",
             color=0xFF0000
         )
-        embed.add_field(name="👤 Người thực hiện", value=ctx.author.mention, inline=True)
+        embed.add_field(name="👤 Người thực hiện", value=interaction.user.mention, inline=True)
         embed.add_field(name="📝 Lý do", value=reason, inline=False)
-        embed.set_footer(text=f"ID: {member.id}")
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
-    @commands.command(name="unban", help="🔓 Gỡ cấm thành viên")
-    @commands.has_permissions(ban_members=True)
-    async def unban(self, ctx, *, name):
-        """Gỡ cấm thành viên bằng tên#tag"""
-        banned_users = [entry async for entry in ctx.guild.bans()]
-        user = None
-        
-        for entry in banned_users:
-            if str(entry.user) == name:
-                user = entry.user
-                break
-        
-        if not user:
-            await ctx.send("❌ Không tìm thấy người dùng này trong danh sách bị cấm!")
-            return
-        
-        await ctx.guild.unban(user)
-        
+    @app_commands.command(name="kick", description="🦶 Kick thành viên khỏi server")
+    @app_commands.describe(member="Thành viên cần kick", reason="Lý do kick")
+    @app_commands.checks.has_permissions(kick_members=True)
+    async def slash_kick(self, interaction: discord.Interaction, member: discord.Member, reason: str = "Không có lý do"):
+        await member.kick(reason=reason)
         embed = discord.Embed(
-            title="✅ Đã Gỡ cấm",
-            description=f"Đã gỡ cấm {user.mention}",
-            color=0x00FF00
+            title="✅ Đã Kick",
+            description=f"Đã kick {member.mention}",
+            color=0xFF6B6B
         )
-        embed.add_field(name="👤 Người thực hiện", value=ctx.author.mention, inline=True)
-        await ctx.send(embed=embed)
-
-    @commands.command(name="warn", help="⚠️ Cảnh cáo thành viên")
-    @commands.has_permissions(administrator=True)
-    async def warn(self, ctx, member: discord.Member, *, reason="Không có lý do"):
-        """Cảnh cáo thành viên"""
-        user_data = self.bot.db.get_user(member.id)
-        user_data["warns"] = user_data.get("warns", 0) + 1
-        self.bot.db.save()
-        
-        embed = discord.Embed(
-            title="⚠️ Cảnh cáo",
-            description=f"{member.mention} đã bị cảnh cáo",
-            color=0xFFA500
-        )
+        embed.add_field(name="👤 Người thực hiện", value=interaction.user.mention, inline=True)
         embed.add_field(name="📝 Lý do", value=reason, inline=False)
-        embed.add_field(name="📊 Số lần", value=f"{user_data['warns']}/{self.bot.config.get('max_warns', 5)}", inline=True)
-        embed.add_field(name="👤 Người thực hiện", value=ctx.author.mention, inline=True)
-        await ctx.send(embed=embed)
-        
-        if user_data["warns"] >= self.bot.config.get('max_warns', 5):
-            await member.ban(reason="Tự động ban - Quá số lần cảnh cáo tối đa")
-            await ctx.send(f"🔨 {member.mention} đã bị tự động ban vì quá {self.bot.config.get('max_warns', 5)} lần cảnh cáo!")
+        await interaction.response.send_message(embed=embed)
 
-    @commands.command(name="clear", help="🧹 Xóa tin nhắn hàng loạt")
-    @commands.has_permissions(manage_messages=True)
-    async def clear(self, ctx, amount: int = 100):
-        """Xóa tin nhắn trong kênh"""
+    @app_commands.command(name="clear", description="🧹 Xóa tin nhắn hàng loạt")
+    @app_commands.describe(amount="Số lượng tin nhắn cần xóa (1-1000)")
+    @app_commands.checks.has_permissions(manage_messages=True)
+    async def slash_clear(self, interaction: discord.Interaction, amount: int = 100):
         if amount > 1000:
             amount = 1000
-        
-        deleted = await ctx.channel.purge(limit=amount + 1)
-        
-        msg = await ctx.send(f"🧹 Đã xóa {len(deleted)-1} tin nhắn")
-        await asyncio.sleep(3)
-        await msg.delete()
-
-    @commands.command(name="slowmode", help="🐢 Đặt chế độ chậm cho kênh")
-    @commands.has_permissions(manage_channels=True)
-    async def slowmode(self, ctx, seconds: int = 0):
-        """Đặt chế độ chậm"""
-        if seconds > 21600:
-            seconds = 21600
-        
-        await ctx.channel.edit(slowmode_delay=seconds)
-        
-        if seconds == 0:
-            await ctx.send("🐢 Đã tắt chế độ chậm")
-        else:
-            await ctx.send(f"🐢 Đã đặt chế độ chậm: {seconds} giây")
-
-    @commands.command(name="lock", help="🔒 Khóa kênh")
-    @commands.has_permissions(administrator=True)
-    async def lock(self, ctx, channel: discord.TextChannel = None):
-        """Khóa kênh"""
-        channel = channel or ctx.channel
-        await channel.set_permissions(ctx.guild.default_role, send_messages=False)
-        await ctx.send(f"🔒 Đã khóa kênh {channel.mention}")
-
-    @commands.command(name="unlock", help="🔓 Mở khóa kênh")
-    @commands.has_permissions(administrator=True)
-    async def unlock(self, ctx, channel: discord.TextChannel = None):
-        """Mở khóa kênh"""
-        channel = channel or ctx.channel
-        await channel.set_permissions(ctx.guild.default_role, send_messages=None)
-        await ctx.send(f"🔓 Đã mở khóa kênh {channel.mention}")
+        deleted = await interaction.channel.purge(limit=amount)
+        await interaction.response.send_message(f"🧹 Đã xóa {len(deleted)} tin nhắn", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Moderation(bot))
