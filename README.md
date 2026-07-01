@@ -1,2 +1,2 @@
-# noel-002-discord-bot
-Discord bot kết hợp chức năng Dyno &amp; Mimu - Noel 002
+# LOOP ON in ONE
+Discord bot kết hợp chức năng của một số bot thông dụng
