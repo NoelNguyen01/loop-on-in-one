@@ -6,7 +6,7 @@ class Info(commands.Cog):
         self.bot = bot
 
     @commands.command(name="info", aliases=["about"])
-    async def bot_info(self, ctx):
+    async def info(self, ctx):
         """📖 Thông tin bot"""
         embed = discord.Embed(
             title="🔄 LOOP ON IN ONE",
