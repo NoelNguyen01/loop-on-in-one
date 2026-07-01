@@ -37,5 +37,7 @@ class Music(commands.Cog):
         await ctx.send('Đã dừng phát nhạc')
 
 # Đăng ký cogs
-def setup(bot):
-await bot.add_cog(Music(bot))
+def play(self, ctx, url):
+    # Code ở đây phải được thụt vào
+    print("Playing...")
+    await ctx.send("Đang phát nhạc...")
