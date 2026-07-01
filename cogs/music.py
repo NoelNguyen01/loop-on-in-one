@@ -38,4 +38,4 @@ class Music(commands.Cog):
 
 # Đăng ký cogs
 def setup(bot):
-    bot.add_cog(Music(bot))
+await bot.add_cog(Music(bot))
