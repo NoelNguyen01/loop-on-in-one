@@ -34,11 +34,19 @@ class Fun(commands.Cog):
     async def eight_ball(self, ctx, *, question):
         """Trả lời câu hỏi ngẫu nhiên"""
         responses = [
-            "Chắc chắn rồi! ✅", "Có thể là như vậy 🤔", "Đừng hy vọng quá ❌",
-            "Chắc chắn không! ❌", "Hỏi lại sau nhé 🔮", "Rất có thể ✅",
-            "Tương lai mờ mịt 🌫️", "Không đời nào! ❌", "Đồng ý! ✅",
-            "Tôi không nghĩ vậy 🤷", "Hãy tin vào bản thân 💪",
-            "Có thể, nhưng không chắc 😐", "Tất nhiên là có! 🌟"
+            "Chắc chắn rồi! ✅", 
+            "Có thể là như vậy 🤔", 
+            "Đừng hy vọng quá ❌",
+            "Chắc chắn không! ❌", 
+            "Hỏi lại sau nhé 🔮", 
+            "Rất có thể ✅",
+            "Tương lai mờ mịt 🌫️", 
+            "Không đời nào! ❌", 
+            "Đồng ý! ✅",
+            "Tôi không nghĩ vậy 🤷", 
+            "Hãy tin vào bản thân 💪",
+            "Có thể, nhưng không chắc 😐", 
+            "Tất nhiên là có! 🌟"
         ]
         
         embed = discord.Embed(
@@ -96,4 +104,20 @@ class Fun(commands.Cog):
         embed.add_field(name="👤 Người", value=target.mention, inline=True)
         embed.add_field(name="💖 Độ gay", value=f"{percentage}%", inline=True)
         
-        bar = "🟩" * (percentage //) 
+        # Tạo thanh tiến trình
+        green = percentage // 10
+        red = 10 - green
+        bar = "🟩" * green + "🟥" * red
+        embed.add_field(name="📊", value=bar, inline=False)
+        
+        if percentage >= 80:
+            embed.set_footer(text="🌈 Siêu gay! Tuyệt vời!")
+        elif percentage >= 50:
+            embed.set_footer(text="🌈 Có vẻ hơi gay rồi đấy!")
+        else:
+            embed.set_footer(text="❓ Chưa có dấu hiệu gì!")
+        
+        await ctx.send(embed=embed)
+
+async def setup(bot):
+    await bot.add_cog(Fun(bot))
