@@ -1,12 +1,10 @@
 import discord
+from discord.ext import commands
 
-# Create a new instance of the bot
-intents = discord.Intents.default()
-bot = discord.Bot(intents=intents)
-
-@bot.event
-async def on_ready():
-    print(f'Logged in as {bot.user}')
-
-# Run the bot with your token
-bot.run('YOUR_DISCORD_BOT_TOKEN')
+# Cấu hình bot với tên dự án
+bot = commands.Bot(
+    command_prefix=config["prefix"],
+    intents=discord.Intents.all(),
+    help_command=None,
+    activity=discord.Game(name="🔄 LOOP ON IN ONE | !help")
+)
