@@ -9,6 +9,7 @@ Author: NoelNguyen01
 
 import discord
 from discord.ext import commands
+from discord import app_commands
 import json
 import os
 import sys
@@ -50,7 +51,6 @@ async def get_prefix(bot, message):
     """Lấy prefix từ config hoặc database"""
     if not message.guild:
         return PREFIX
-    # Có thể mở rộng để lấy prefix theo server từ database
     return PREFIX
 
 # ==== INITIALIZE BOT ====
@@ -150,6 +150,38 @@ async def load_cogs():
         print(f"⚠️ Có {failed} cog(s) không load được")
     print("=" * 50)
 
+# ==== SLASH COMMANDS (Lệnh /) ====
+@bot.tree.command(name="ping", description="🏓 Kiểm tra độ trễ của bot")
+async def slash_ping(interaction: discord.Interaction):
+    """Lệnh slash /ping"""
+    latency = round(bot.latency * 1000)
+    embed = discord.Embed(
+        title="🏓 Pong!",
+        description=f"Độ trễ: **{latency}ms**",
+        color=0x00D4FF
+    )
+    embed.set_footer(text="LOOP ON IN ONE")
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="info", description="📖 Thông tin về bot")
+async def slash_info(interaction: discord.Interaction):
+    """Lệnh slash /info"""
+    embed = discord.Embed(
+        title="🔄 LOOP ON IN ONE",
+        description="Bot Discord đa năng, tích hợp mọi tính năng quản trị trong một gói duy nhất.",
+        color=0x00D4FF
+    )
+    embed.add_field(name="📌 Phiên bản", value=config.get("version", "1.0.0"), inline=True)
+    embed.add_field(name="👨‍💻 Tác giả", value="NoelNguyen01", inline=True)
+    embed.add_field(name="💡 Ý tưởng", value="Dyno + Mimu, nhưng trong một bot!", inline=False)
+    embed.add_field(
+        name="🔗 GitHub",
+        value="[NoelNguyen01/loop-on-in-one](https://github.com/NoelNguyen01/loop-on-in-one)",
+        inline=False
+    )
+    embed.set_footer(text="🔄 Loop On In One - Vòng lặp của mọi tính năng")
+    await interaction.response.send_message(embed=embed)
+
 # ==== EVENTS ====
 @bot.event
 async def on_ready():
@@ -162,6 +194,15 @@ async def on_ready():
     print(f"📦 Số cog: {len(bot.cogs)}")
     print(f"👥 Số server: {len(bot.guilds)}")
     print("=" * 60)
+    
+    # Đồng bộ lệnh slash
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Đã đồng bộ {len(synced)} lệnh slash!")
+        for cmd in synced:
+            print(f"   /{cmd.name}")
+    except Exception as e:
+        print(f"❌ Lỗi đồng bộ lệnh slash: {e}")
     
     # Cập nhật activity
     await bot.change_presence(
@@ -176,7 +217,7 @@ async def on_connect():
 
 @bot.event
 async def on_command_error(ctx, error):
-    """Xử lý lỗi lệnh"""
+    """Xử lý lỗi lệnh prefix (!)"""
     if isinstance(error, commands.CommandNotFound):
         embed = discord.Embed(
             title="❌ Lỗi",
@@ -229,14 +270,12 @@ async def on_command_error(ctx, error):
 @bot.event
 async def on_member_join(member):
     """Sự kiện khi thành viên mới vào server"""
-    # Auto-role
     guild_data = db.get_guild(member.guild.id)
     if guild_data.get("autorole"):
         role = member.guild.get_role(guild_data["autorole"])
         if role:
             await member.add_roles(role)
     
-    # Gửi tin nhắn chào mừng
     channel_name = guild_data.get("welcome_channel", "welcome")
     channel = discord.utils.get(member.guild.text_channels, name=channel_name)
     
@@ -255,7 +294,7 @@ async def on_member_join(member):
 @bot.event
 async def on_member_remove(member):
     """Sự kiện khi thành viên rời server"""
-    channel_name = "welcome"  # Có thể config
+    channel_name = "welcome"
     channel = discord.utils.get(member.guild.text_channels, name=channel_name)
     
     if channel:
@@ -269,7 +308,7 @@ async def on_member_remove(member):
         embed.set_footer(text=f"📊 Hiện còn {member.guild.member_count} thành viên")
         await channel.send(embed=embed)
 
-# ==== BASIC COMMANDS ====
+# ==== BASIC COMMANDS (Prefix !) ====
 @bot.command(name="ping")
 async def ping(ctx):
     """🏓 Kiểm tra độ trễ"""
@@ -292,7 +331,6 @@ async def help_command(ctx, *, command_name: str = None):
     )
     
     if command_name:
-        # Tìm lệnh cụ thể
         for cmd in bot.commands:
             if cmd.name == command_name.lower() or command_name.lower() in cmd.aliases:
                 embed.add_field(
@@ -304,7 +342,6 @@ async def help_command(ctx, *, command_name: str = None):
         else:
             embed.description = f"Không tìm thấy lệnh `{command_name}`"
     else:
-        # Hiển thị tất cả
         categories = {
             "🛡️ Quản trị": ["kick", "ban", "warn", "clear", "slowmode", "lock", "unlock"],
             "🎯 Tiện ích": ["poll", "giveaway", "remind", "serverinfo", "userinfo"],
@@ -348,4 +385,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n🛑 Bot đã dừng bởi người dùng.")
     except Exception as e:
-        print(f"❌ Lỗi không xác định: {e}")
+        print(f"❌ Lỗi không xác định: {e}") 
