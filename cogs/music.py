@@ -6,38 +6,44 @@ class Music(commands.Cog):
         self.bot = bot
         self.queue = []
 
-    @commands.command()
+    @commands.command(name="play", help="🎵 Phát nhạc từ URL")
     async def play(self, ctx, url):
         """Phát một bài hát từ URL"""
         # Code to play music
-        await ctx.send(f'Đang phát: {url}')  
+        await ctx.send(f'Đang phát: {url}')
 
-    @commands.command()
+    @commands.command(name="pause", help="⏸️ Tạm dừng bài hát")
     async def pause(self, ctx):
         """Tạm dừng bài hát hiện tại"""
         # Code to pause music
-        await ctx.send('Bài hát đã được tạm dừng')
+        await ctx.send('⏸️ Bài hát đã được tạm dừng')
 
-    @commands.command()
+    @commands.command(name="skip", help="⏭️ Bỏ qua bài hát")
     async def skip(self, ctx):
         """Bỏ qua bài hát hiện tại"""
         # Code to skip music
-        await ctx.send('Đã bỏ qua bài hát')
+        await ctx.send('⏭️ Đã bỏ qua bài hát')
 
-    @commands.command()
+    @commands.command(name="queue", help="📋 Hiển thị hàng đợi")
     async def queue(self, ctx):
         """Hiển thị hàng đợi bài hát"""
-        # Code to show the queue
-        await ctx.send('Hàng đợi bài hát của bạn:')  
+        if not self.queue:
+            await ctx.send('📋 Hàng đợi trống!')
+        else:
+            queue_list = "\n".join([f"{i+1}. {song}" for i, song in enumerate(self.queue)])
+            await ctx.send(f'📋 **Hàng đợi:**\n{queue_list}')
 
-    @commands.command()
+    @commands.command(name="stop", help="⏹️ Dừng phát nhạc")
     async def stop(self, ctx):
         """Dừng phát nhạc"""
-        # Code to stop music
-        await ctx.send('Đã dừng phát nhạc')
+        self.queue.clear()
+        await ctx.send('⏹️ Đã dừng phát nhạc và xóa hàng đợi')
 
-# Đăng ký cogs
-def play(self, ctx, url):
-    # Code ở đây phải được thụt vào
-    print("Playing...")
-    await ctx.send("Đang phát nhạc...")
+    @commands.command(name="add", help="➕ Thêm bài hát vào hàng đợi")
+    async def add(self, ctx, url):
+        """Thêm bài hát vào hàng đợi"""
+        self.queue.append(url)
+        await ctx.send(f'➕ Đã thêm vào hàng đợi: {url}')
+
+async def setup(bot):
+    await bot.add_cog(Music(bot))
