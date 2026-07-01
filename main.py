@@ -10,6 +10,7 @@ Author: NoelNguyen01
 import discord
 from discord.ext import commands
 from discord import app_commands
+import aiohttp
 import json
 import os
 import sys
@@ -166,6 +167,133 @@ async def slash_ping(interaction: discord.Interaction):
 @bot.tree.command(name="info", description="📖 Thông tin về bot")
 async def slash_info(interaction: discord.Interaction):
     """Lệnh slash /info"""
+    # ===== LỆNH SLASH QUẢN TRỊ =====
+
+@bot.tree.command(name="ban", description="⛔ Cấm người dùng")
+@app_commands.describe(member="Thành viên cần ban", reason="Lý do ban")
+@app_commands.checks.has_permissions(ban_members=True)
+async def slash_ban(interaction: discord.Interaction, member: discord.Member, reason: str = "Không có lý do"):
+    await member.ban(reason=reason)
+    embed = discord.Embed(title="✅ Đã Ban", description=f"Đã ban {member.mention}", color=0xFF0000)
+    embed.add_field(name="📝 Lý do", value=reason)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="kick", description="🦶 Đuổi người dùng")
+@app_commands.describe(member="Thành viên cần kick", reason="Lý do kick")
+@app_commands.checks.has_permissions(kick_members=True)
+async def slash_kick(interaction: discord.Interaction, member: discord.Member, reason: str = "Không có lý do"):
+    await member.kick(reason=reason)
+    embed = discord.Embed(title="✅ Đã Kick", description=f"Đã kick {member.mention}", color=0xFF6B6B)
+    embed.add_field(name="📝 Lý do", value=reason)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="clear", description="🧹 Xóa tin nhắn hàng loạt")
+@app_commands.describe(amount="Số lượng tin nhắn (1-100)")
+@app_commands.checks.has_permissions(manage_messages=True)
+async def slash_clear(interaction: discord.Interaction, amount: int = 10):
+    if amount > 100:
+        amount = 100
+    deleted = await interaction.channel.purge(limit=amount)
+    await interaction.response.send_message(f"🧹 Đã xóa {len(deleted)} tin nhắn", ephemeral=True)
+
+# ===== LỆNH SLASH TIỆN ÍCH =====
+
+@bot.tree.command(name="gif", description="🎞️ Tìm ảnh động trên Web")
+@app_commands.describe(query="Từ khóa tìm kiếm GIF")
+async def slash_gif(interaction: discord.Interaction, query: str):
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = f"https://api.giphy.com/v1/gifs/translate?api_key=YOUR_GIPHY_API_KEY&s={query}"
+            async with session.get(url) as resp:
+                data = await resp.json()
+                gif_url = data['data']['images']['original']['url']
+                embed = discord.Embed(title=f"🎞️ GIF: {query}", color=0x00D4FF)
+                embed.set_image(url=gif_url)
+                await interaction.response.send_message(embed=embed)
+    except:
+        await interaction.response.send_message("❌ Không tìm thấy GIF!")
+
+@bot.tree.command(name="me", description="📝 Nhấn mạnh nội dung")
+@app_commands.describe(content="Nội dung cần nhấn mạnh")
+async def slash_me(interaction: discord.Interaction, content: str):
+    embed = discord.Embed(description=f"**{interaction.user.display_name}** {content}", color=0x00D4FF)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="msg", description="💬 Nhắn tin cho người dùng")
+@app_commands.describe(member="Người nhận", message="Nội dung tin nhắn")
+@app_commands.checks.has_permissions(administrator=True)
+async def slash_msg(interaction: discord.Interaction, member: discord.Member, message: str):
+    try:
+        await member.send(f"📩 Tin nhắn từ **{interaction.user.display_name}** ở **{interaction.guild.name}**:\n{message}")
+        await interaction.response.send_message(f"✅ Đã gửi tin nhắn cho {member.mention}!", ephemeral=True)
+    except:
+        await interaction.response.send_message("❌ Không thể gửi tin nhắn!", ephemeral=True)
+
+# ===== LỆNH SLASH GIẢI TRÍ =====
+
+@bot.tree.command(name="meme", description="😂 Lấy meme ngẫu nhiên")
+async def slash_meme(interaction: discord.Interaction):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://meme-api.com/gimme") as response:
+                if response.status == 200:
+                    data = await response.json()
+                    embed = discord.Embed(title="😂 Meme cho bạn", color=0xFF6B6B)
+                    embed.set_image(url=data["url"])
+                    embed.set_footer(text=f"👍 {data['ups']} | u/{data['author']}")
+                    await interaction.response.send_message(embed=embed)
+                else:
+                    await interaction.response.send_message("❌ Không thể lấy meme lúc này!")
+    except:
+        await interaction.response.send_message("❌ Không thể lấy meme lúc này!")
+
+@bot.tree.command(name="8ball", description="🎱 Hỏi ý kiến bóng ma thuật")
+@app_commands.describe(question="Câu hỏi của bạn")
+async def slash_8ball(interaction: discord.Interaction, question: str):
+    import random
+    responses = [
+        "Chắc chắn rồi! ✅", "Có thể là như vậy 🤔", "Đừng hy vọng quá ❌",
+        "Chắc chắn không! ❌", "Hỏi lại sau nhé 🔮", "Rất có thể ✅",
+        "Tương lai mờ mịt 🌫️", "Không đời nào! ❌", "Đồng ý! ✅",
+        "Tôi không nghĩ vậy 🤷", "Hãy tin vào bản thân 💪",
+        "Có thể, nhưng không chắc 😐", "Tất nhiên là có! 🌟"
+    ]
+    embed = discord.Embed(title="🎱 Bóng ma thuật", color=0x9B59B6)
+    embed.add_field(name="❓ Câu hỏi", value=question, inline=False)
+    embed.add_field(name="🎯 Câu trả lời", value=random.choice(responses), inline=False)
+    embed.set_footer(text="LOOP ON IN ONE")
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="guess", description="🔢 Game đoán số (1-100)")
+async def slash_guess(interaction: discord.Interaction):
+    import random
+    number = random.randint(1, 100)
+    await interaction.response.send_message(f"🔢 Tôi đang nghĩ đến một số từ 1 đến 100. Hãy đoán! Gõ `!guessnumber` để chơi!")
+
+# ===== LỆNH SLASH THÔNG TIN =====
+
+@bot.tree.command(name="serverinfo", description="ℹ️ Thông tin server")
+async def slash_serverinfo(interaction: discord.Interaction):
+    guild = interaction.guild
+    embed = discord.Embed(title=f"ℹ️ Thông tin {guild.name}", color=0x00D4FF)
+    if guild.icon:
+        embed.set_thumbnail(url=guild.icon.url)
+    embed.add_field(name="👑 Chủ sở hữu", value=guild.owner.mention, inline=True)
+    embed.add_field(name="👥 Thành viên", value=guild.member_count, inline=True)
+    embed.add_field(name="📅 Ngày tạo", value=guild.created_at.strftime("%d/%m/%Y"), inline=True)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="userinfo", description="👤 Thông tin thành viên")
+@app_commands.describe(member="Thành viên cần xem")
+async def slash_userinfo(interaction: discord.Interaction, member: discord.Member = None):
+    member = member or interaction.user
+    embed = discord.Embed(title=f"👤 Thông tin {member.display_name}", color=0x00D4FF)
+    if member.avatar:
+        embed.set_thumbnail(url=member.avatar.url)
+    embed.add_field(name="🆔 ID", value=member.id, inline=True)
+    embed.add_field(name="📛 Tên", value=member.name, inline=True)
+    embed.add_field(name="📅 Ngày tham gia", value=member.joined_at.strftime("%d/%m/%Y"), inline=True)
+    await interaction.response.send_message(embed=embed)
     embed = discord.Embed(
         title="🔄 LOOP ON IN ONE",
         description="Bot Discord đa năng, tích hợp mọi tính năng quản trị trong một gói duy nhất.",
