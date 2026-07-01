@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+LOOP ON IN ONE - Discord Bot
+Version: 1.0.0
+Author: NoelNguyen01
+"""
+
 import discord
 from discord.ext import commands
 import json
 import os
+import sys
+import asyncio
 from dotenv import load_dotenv
 
-# ==== 1. LOAD BIẾN MÔI TRƯỜNG ====
-load_dotenv()  # Đọc file .env
+# ==== LOAD ENVIRONMENT ====
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
+PREFIX = os.getenv("PREFIX", "!")
 
-# Đọc token từ biến môi trường
-TOKEN = os.getenv("DISCORD_TOKEN")  # ← QUAN TRỌNG: Tên biến phải đúng
-
-# ==== 2. KIỂM TRA TOKEN ====
+# ==== CHECK TOKEN ====
 if not TOKEN:
     print("=" * 60)
     print("❌ LỖI: KHÔNG TÌM THẤY DISCORD_TOKEN!")
@@ -22,49 +29,111 @@ if not TOKEN:
     print("   DISCORD_TOKEN=your_token_here")
     print("   PREFIX=!")
     print("=" * 60)
-    exit(1)  # Thoát nếu không có token
+    sys.exit(1)
 
-# ==== 3. ĐỌC CONFIG ====
+# ==== LOAD CONFIG ====
 try:
     with open("config.json", "r", encoding="utf-8") as f:
         config = json.load(f)
 except FileNotFoundError:
     print("⚠️ Không tìm thấy config.json, dùng config mặc định")
     config = {
-        "prefix": "!",
+        "prefix": PREFIX,
         "bot_name": "LOOP ON IN ONE",
         "embed_color": "#00D4FF",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "description": "Discord bot đa năng - Loop On In One"
     }
 
-# ==== 4. KHỞI TẠO BOT ====
+# ==== CUSTOM PREFIX FUNCTION ====
+async def get_prefix(bot, message):
+    """Lấy prefix từ config hoặc database"""
+    if not message.guild:
+        return PREFIX
+    # Có thể mở rộng để lấy prefix theo server từ database
+    return PREFIX
+
+# ==== INITIALIZE BOT ====
+intents = discord.Intents.all()
 bot = commands.Bot(
-    command_prefix=config.get("prefix", "!"),
-    intents=discord.Intents.all(),
+    command_prefix=get_prefix,
+    intents=intents,
     help_command=None,
-    activity=discord.Game(name="🔄 LOOP ON IN ONE | !help"),
+    activity=discord.Game(name=f"🔄 LOOP ON IN ONE | {PREFIX}help"),
     status=discord.Status.online
 )
 
-# ==== 5. SỰ KIỆN ON_READY ====
-@bot.event
-async def on_ready():
-    print("=" * 60)
-    print(f"✅ LOOP ON IN ONE đã hoạt động!")
-    print(f"🤖 Tên: {bot.user.name}")
-    print(f"🆔 ID: {bot.user.id}")
-    print(f"📊 Prefix: {config.get('prefix', '!')}")
-    print(f"📦 Số cog: {len(bot.cogs)}")
-    print("=" * 60)
+# ==== DATABASE MANAGER ====
+class DatabaseManager:
+    """Quản lý database đơn giản dùng JSON"""
+    
+    def __init__(self):
+        self.data = {}
+        self.load()
+    
+    def load(self):
+        """Load dữ liệu từ file"""
+        try:
+            with open("database/data.json", "r", encoding="utf-8") as f:
+                self.data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.data = {
+                "users": {},
+                "guilds": {},
+                "warns": {},
+                "economy": {},
+                "levels": {}
+            }
+            self.save()
+    
+    def save(self):
+        """Lưu dữ liệu ra file"""
+        os.makedirs("database", exist_ok=True)
+        with open("database/data.json", "w", encoding="utf-8") as f:
+            json.dump(self.data, f, indent=4, ensure_ascii=False)
+    
+    def get_user(self, user_id):
+        """Lấy dữ liệu user"""
+        uid = str(user_id)
+        if uid not in self.data["users"]:
+            self.data["users"][uid] = {
+                "balance": 0,
+                "level": 0,
+                "xp": 0,
+                "daily": None,
+                "warns": 0
+            }
+            self.save()
+        return self.data["users"][uid]
+    
+    def get_guild(self, guild_id):
+        """Lấy dữ liệu guild"""
+        gid = str(guild_id)
+        if gid not in self.data["guilds"]:
+            self.data["guilds"][gid] = {
+                "autorole": None,
+                "welcome_channel": None,
+                "log_channel": None,
+                "prefix": PREFIX
+            }
+            self.save()
+        return self.data["guilds"][gid]
 
-# ==== 6. LOAD COGS ====
+# ==== INIT DATABASE ====
+db = DatabaseManager()
+bot.db = db
+
+# ==== LOAD COGS ====
 async def load_cogs():
+    """Load tất cả cogs trong thư mục cogs"""
     if not os.path.exists("./cogs"):
         os.makedirs("./cogs")
         print("📁 Thư mục cogs đã được tạo!")
         return
     
     loaded = 0
+    failed = 0
+    
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py") and not filename.startswith("__"):
             try:
@@ -73,44 +142,208 @@ async def load_cogs():
                 loaded += 1
             except Exception as e:
                 print(f"❌ Lỗi load {filename}: {e}")
+                failed += 1
     
-    if loaded == 0:
-        print("⚠️ Không có cog nào được load!")
-    else:
-        print(f"📦 Đã load {loaded} cog(s)")
+    print("=" * 50)
+    print(f"📦 Đã load {loaded} cog(s)")
+    if failed > 0:
+        print(f"⚠️ Có {failed} cog(s) không load được")
+    print("=" * 50)
+
+# ==== EVENTS ====
+@bot.event
+async def on_ready():
+    """Sự kiện khi bot sẵn sàng"""
+    print("=" * 60)
+    print(f"✅ {config['bot_name']} đã hoạt động!")
+    print(f"🤖 Tên: {bot.user.name}")
+    print(f"🆔 ID: {bot.user.id}")
+    print(f"📊 Prefix: {PREFIX}")
+    print(f"📦 Số cog: {len(bot.cogs)}")
+    print(f"👥 Số server: {len(bot.guilds)}")
+    print("=" * 60)
+    
+    # Cập nhật activity
+    await bot.change_presence(
+        activity=discord.Game(name=f"🔄 LOOP ON IN ONE | {PREFIX}help"),
+        status=discord.Status.online
+    )
 
 @bot.event
 async def on_connect():
+    """Sự kiện khi kết nối thành công"""
     await load_cogs()
 
-# ==== 7. XỬ LÝ LỖI ====
 @bot.event
 async def on_command_error(ctx, error):
+    """Xử lý lỗi lệnh"""
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send(f"❌ Lệnh không tồn tại. Gõ `{config.get('prefix', '!')}help` để xem danh sách.")
+        embed = discord.Embed(
+            title="❌ Lỗi",
+            description=f"Lệnh không tồn tại. Gõ `{PREFIX}help` để xem danh sách.",
+            color=0xFF0000
+        )
+        await ctx.send(embed=embed)
+    
     elif isinstance(error, commands.MissingPermissions):
-        await ctx.send("❌ Bạn không có quyền sử dụng lệnh này!")
+        embed = discord.Embed(
+            title="❌ Lỗi",
+            description="Bạn không có quyền sử dụng lệnh này!",
+            color=0xFF0000
+        )
+        await ctx.send(embed=embed)
+    
     elif isinstance(error, commands.BotMissingPermissions):
-        await ctx.send("❌ Bot không có đủ quyền để thực hiện lệnh này!")
+        embed = discord.Embed(
+            title="❌ Lỗi",
+            description="Bot không có đủ quyền để thực hiện lệnh này!",
+            color=0xFF0000
+        )
+        await ctx.send(embed=embed)
+    
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"❌ Thiếu tham số: `{error.param.name}`")
+        embed = discord.Embed(
+            title="❌ Lỗi",
+            description=f"Thiếu tham số: `{error.param.name}`",
+            color=0xFF0000
+        )
+        await ctx.send(embed=embed)
+    
+    elif isinstance(error, commands.CommandOnCooldown):
+        embed = discord.Embed(
+            title="⏰ Chậm lại",
+            description=f"Vui lòng đợi {error.retry_after:.1f} giây trước khi dùng lệnh này!",
+            color=0xFFA500
+        )
+        await ctx.send(embed=embed)
+    
     else:
-        await ctx.send(f"❌ Đã xảy ra lỗi: {str(error)}")
+        embed = discord.Embed(
+            title="❌ Lỗi",
+            description=f"Đã xảy ra lỗi: {str(error)}",
+            color=0xFF0000
+        )
+        await ctx.send(embed=embed)
         print(f"Lỗi: {error}")
 
-# ==== 8. CHẠY BOT ====
+@bot.event
+async def on_member_join(member):
+    """Sự kiện khi thành viên mới vào server"""
+    # Auto-role
+    guild_data = db.get_guild(member.guild.id)
+    if guild_data.get("autorole"):
+        role = member.guild.get_role(guild_data["autorole"])
+        if role:
+            await member.add_roles(role)
+    
+    # Gửi tin nhắn chào mừng
+    channel_name = guild_data.get("welcome_channel", "welcome")
+    channel = discord.utils.get(member.guild.text_channels, name=channel_name)
+    
+    if channel:
+        embed = discord.Embed(
+            title="👋 Chào mừng!",
+            description=f"Chào mừng {member.mention} đến với **{member.guild.name}**!",
+            color=0x00FF00
+        )
+        if member.avatar:
+            embed.set_thumbnail(url=member.avatar.url)
+        embed.add_field(name="📅 Ngày tham gia", value=member.joined_at.strftime("%d/%m/%Y %H:%M"))
+        embed.set_footer(text=f"🎉 Chúng tôi hiện có {member.guild.member_count} thành viên")
+        await channel.send(embed=embed)
+
+@bot.event
+async def on_member_remove(member):
+    """Sự kiện khi thành viên rời server"""
+    channel_name = "welcome"  # Có thể config
+    channel = discord.utils.get(member.guild.text_channels, name=channel_name)
+    
+    if channel:
+        embed = discord.Embed(
+            title="👋 Tạm biệt!",
+            description=f"{member.mention} đã rời khỏi server.",
+            color=0xFF0000
+        )
+        if member.avatar:
+            embed.set_thumbnail(url=member.avatar.url)
+        embed.set_footer(text=f"📊 Hiện còn {member.guild.member_count} thành viên")
+        await channel.send(embed=embed)
+
+# ==== BASIC COMMANDS ====
+@bot.command(name="ping")
+async def ping(ctx):
+    """🏓 Kiểm tra độ trễ"""
+    latency = round(bot.latency * 1000)
+    embed = discord.Embed(
+        title="🏓 Pong!",
+        description=f"Độ trễ: **{latency}ms**",
+        color=0x00D4FF
+    )
+    embed.set_footer(text="LOOP ON IN ONE")
+    await ctx.send(embed=embed)
+
+@bot.command(name="help")
+async def help_command(ctx, *, command_name: str = None):
+    """📖 Hiển thị danh sách lệnh"""
+    embed = discord.Embed(
+        title="📖 LOOP ON IN ONE - Hướng dẫn sử dụng",
+        description="Dưới đây là danh sách các lệnh có sẵn:",
+        color=0x00D4FF
+    )
+    
+    if command_name:
+        # Tìm lệnh cụ thể
+        for cmd in bot.commands:
+            if cmd.name == command_name.lower() or command_name.lower() in cmd.aliases:
+                embed.add_field(
+                    name=f"`{PREFIX}{cmd.name}`",
+                    value=cmd.help or "Không có mô tả",
+                    inline=False
+                )
+                break
+        else:
+            embed.description = f"Không tìm thấy lệnh `{command_name}`"
+    else:
+        # Hiển thị tất cả
+        categories = {
+            "🛡️ Quản trị": ["kick", "ban", "warn", "clear", "slowmode", "lock", "unlock"],
+            "🎯 Tiện ích": ["poll", "giveaway", "remind", "serverinfo", "userinfo"],
+            "😂 Giải trí": ["meme", "8ball", "guess", "gay"],
+            "💰 Kinh tế": ["balance", "daily", "give", "shop", "work"],
+            "🤖 Tự động": ["addbadword", "removebadword", "autorole"],
+            "⚙️ Admin": ["reload", "load", "unload", "setprefix", "shutdown"],
+            "📖 Thông tin": ["ping", "info", "help"]
+        }
+        
+        for category, commands_list in categories.items():
+            cmd_list = []
+            for cmd_name in commands_list:
+                cmd = bot.get_command(cmd_name)
+                if cmd:
+                    cmd_list.append(f"`{PREFIX}{cmd_name}`")
+            if cmd_list:
+                embed.add_field(
+                    name=category,
+                    value=" ".join(cmd_list),
+                    inline=False
+                )
+    
+    embed.set_footer(text=f"🔹 Prefix hiện tại: {PREFIX} | Gõ {PREFIX}help <lệnh> để xem chi tiết")
+    await ctx.send(embed=embed)
+
+# ==== RUN BOT ====
 if __name__ == "__main__":
     try:
         print("🔄 Đang khởi động LOOP ON IN ONE...")
-        bot.run(TOKEN)  # ← QUAN TRỌNG: Dùng biến TOKEN đã kiểm tra
+        bot.run(TOKEN)
     except discord.errors.LoginFailure:
         print("=" * 60)
         print("❌ LỖI ĐĂNG NHẬP: TOKEN KHÔNG HỢP LỆ!")
         print("=" * 60)
-        print("📝 Hãy kiểm tra:")
+        print("📝 Kiểm tra:")
         print("   1. Token đã được copy chính xác chưa?")
         print("   2. Token có còn hiệu lực không?")
-        print("   3. Đã bật Privileged Gateway Intents trong Discord Developer Portal chưa?")
+        print("   3. Đã bật Privileged Gateway Intents chưa?")
         print("=" * 60)
     except KeyboardInterrupt:
         print("\n🛑 Bot đã dừng bởi người dùng.")
