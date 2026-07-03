@@ -42,6 +42,11 @@ HELP_DATA = {
         (".lsrf", "Thông tin user"),
         (".lbtf", "Thông tin bot"),
     ],
+    "🔤 Nối từ": [
+        (".ltt", "Bắt đầu ván nối từ (Anh/Việt) trong kênh"),
+        (".ltp", "Dừng ván nối từ trong kênh"),
+        (".ldm", "Xem bảng điểm ván nối từ hiện tại"),
+    ],
     "🛠️ Tiện ích": [
         (".lp", "Kiểm tra độ trễ"),
         (".lvt", "Xem avatar"),
