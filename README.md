@@ -1,100 +1,214 @@
-# loop-on-in-one 🎲
+<div align="center">
 
-Discord bot kết hợp nhiều hệ thống: **kinh tế, level/XP, moderation, auto-mod,
-role tự động, thống kê, và cả hệ thống kết hôn** — tất cả dùng slash command (`/`)
-chuẩn Discord, dữ liệu lưu bằng SQLite (không cần setup database server).
+# 🎲 Loop On In One
+
+### Discord Bot đa năng — Kinh tế ảo · Game giải trí · Từ khóa tự động · Quản lý server
+
+![Version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)
+![Python](https://img.shields.io/badge/python-3.8%2B-green?style=for-the-badge&logo=python&logoColor=white)
+![discord.py](https://img.shields.io/badge/discord.py-2.3%2B-5865F2?style=for-the-badge&logo=discord&logoColor=white)
+![Status](https://img.shields.io/badge/status-active-brightgreen?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-lightgrey?style=for-the-badge)
+
+</div>
+
+<br>
+
+> ⚠️ **Lưu ý:** Toàn bộ tiền tệ trong bot là **tiền ảo trong game**, không có giá trị quy đổi thực tế — chỉ phục vụ mục đích giải trí nội bộ server.
+
+<br>
+
+## 📚 Mục lục
+
+- [✨ Tính năng](#-tính-năng)
+- [🚀 Cài đặt](#-hướng-dẫn-cài-đặt)
+- [📂 Cấu trúc thư mục](#-cấu-trúc-thư-mục)
+- [📋 Danh sách lệnh](#-danh-sách-lệnh-đầy-đủ)
+- [🔐 Bảo mật](#-bảo-mật)
+- [🗄️ Cơ sở dữ liệu](#️-cơ-sở-dữ-liệu)
+
+<br>
 
 ## ✨ Tính năng
 
-| Nhóm | Mô tả |
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 💰 Kinh tế
+| Lệnh | Mô tả |
 |---|---|
-| 🪙 Kinh tế | balance, daily (có streak), work, shop/buy/sell, give, rob, gamble, leaderboard, pay_all |
-| 📊 Level/XP | tự cộng XP qua tin nhắn / voice / reaction, rank, leaderboard, role theo level, double XP |
-| 🛡️ Moderation | warn/warnings, mute (timeout), kick, ban, unban, clear, slowmode, log đầy đủ |
-| 🎮 Giải trí | avatar, server/user info, ping, roll, flip, 8ball, quote, suggest, poll |
-| 🎁 Role | give/remove role, autorole khi join, welcome/goodbye |
-| 🔧 Auto-Mod | chống spam, chống link, chống ping hàng loạt, log xóa/sửa tin nhắn |
-| 🎨 Cài đặt | đổi tên tiền tệ, kênh welcome/goodbye/rank/log, reset dữ liệu |
-| 📈 Thống kê | server_stats, user_stats, top_activity, bot_info |
-| 🔐 Admin | backup/restore dữ liệu ra JSON, blacklist/whitelist |
-| 🧠 Đặc biệt | hệ thống kết hôn `/marry /divorce /profile` |
+| `/daily` | Điểm danh, có streak thưởng thêm |
+| `/balance` | Xem số dư |
+| `/top` | Bảng xếp hạng |
+| `/transfer` | Chuyển tiền |
+| `/work` | Làm việc kiếm tiền |
+| `/shop` `/buy` | Cửa hàng vật phẩm |
 
-> Lệnh `/exec` (chạy code tùy ý) **cố tình không được triển khai** vì đây là một
-> lỗ hổng bảo mật nghiêm trọng (RCE) — xem giải thích trong `GHI_CHU_TICH_HOP.md`.
+</td>
+<td width="50%" valign="top">
 
-## 📦 Cấu trúc dự án
+### 🎮 Giải trí
+| Lệnh | Mô tả |
+|---|---|
+| `/taixiu` | Tài Xỉu — Modal + Button + đếm ngược |
+| `/baucua` | Bầu Cua Tôm Cá — chọn nhiều con |
+| `/coinflip` | Tung đồng xu có cược |
+| `/rollfun` `/flipfun` | Vui, không cược |
 
-```
-loop-on-in-one/
-├── main.py                # Điểm khởi chạy, load cogs, sync slash command
-├── config.json             # Cấu hình mặc định (prefix, đường dẫn DB, màu embed)
-├── requirements.txt
-├── .env.example             # Mẫu biến môi trường (DISCORD_TOKEN, DEV_GUILD_ID)
-├── database/
-│   └── db.py                 # Lớp Database (SQLite qua aiosqlite) — toàn bộ schema & query
-├── utils/
-│   └── helpers.py             # Embed helper, parse thời gian, check quyền admin...
-└── cogs/
-    ├── economy.py
-    ├── leveling.py
-    ├── moderation.py
-    ├── fun.py
-    ├── roles.py
-    ├── automod.py
-    ├── settings.py
-    ├── stats.py
-    ├── admin.py
-    ├── social.py             # Hệ thống kết hôn + /profile
-    └── help.py                # /help liệt kê toàn bộ lệnh
-```
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
 
-## 🚀 Cài đặt
+### 🔑 Từ khóa
+| Lệnh | Mô tả |
+|---|---|
+| `/setkeyword` | Tạo từ khóa tự động phản hồi |
+| `/delkeyword` | Xóa từ khóa |
+| `/listkeyword` | Xem danh sách |
 
-1. Tạo bot tại [Discord Developer Portal](https://discord.com/developers/applications),
-   lấy **Token** trong tab *Bot*.
-2. Bật 2 **Privileged Gateway Intents** (bắt buộc): `SERVER MEMBERS INTENT` và
-   `MESSAGE CONTENT INTENT`.
-3. Mời bot vào server với quyền tối thiểu: `Manage Roles`, `Manage Messages`,
-   `Kick Members`, `Ban Members`, `Moderate Members`, `Send Messages`, `Embed Links`.
-4. Clone & cài đặt:
+</td>
+<td width="50%" valign="top">
 
+### ⚙️ Cài đặt <sub>(Admin)</sub>
+| Lệnh | Mô tả |
+|---|---|
+| `/setwelcome` | Kênh chào mừng |
+| `/setgoodbye` | Kênh tạm biệt |
+| `/setvoicelog` | Kênh log voice |
+| `/setcurrency` | Đổi tên tiền tệ |
+
+</td>
+</tr>
+</table>
+
+**ℹ️ Thông tin & Tiện ích:** `/serverinfo` · `/userinfo` · `/botinfo` · `/ping` · `/avatar` · `/roll` · `/flip` · `/help`
+
+<br>
+
+## 🚀 Hướng dẫn cài đặt
+
+**1. Clone / tải project về máy**
+
+**2. Cài đặt thư viện phụ thuộc**
 ```bash
-git clone https://github.com/NoelNguyen01/loop-on-in-one.git
-cd loop-on-in-one
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env
-# Mở .env, điền DISCORD_TOKEN=...
+```
+
+**3. Cấu hình biến môi trường** — sao chép `.env.example` thành `.env`:
+```env
+DISCORD_TOKEN=token_bot_cua_ban
+DEV_GUILD_ID=id_server_dung_de_test
+```
+| Biến | Ghi chú |
+|---|---|
+| `DISCORD_TOKEN` | Lấy tại [Discord Developer Portal](https://discord.com/developers/applications) |
+| `DEV_GUILD_ID` | *(tùy chọn)* ID server test — để trống sẽ đồng bộ lệnh toàn cục (mất tới ~1 giờ) |
+
+**4. Quyền bot (Bot Permissions)** khi mời vào server:
+
+`Send Messages` · `Manage Messages` · `Use Slash Commands` · `Connect` · `Speak` · `View Channels` · `Moderate Members`
+
+**5. Bật Privileged Gateway Intents** trong Developer Portal:
+
+`Server Members Intent` · `Message Content Intent`
+
+**6. Chạy bot**
+```bash
 python main.py
 ```
 
-Muốn test lệnh **ngay lập tức** thay vì chờ Discord đồng bộ global (~1 giờ), điền
-thêm `DEV_GUILD_ID=<id server test>` trong `.env`.
+<br>
 
-## 🗄️ Dữ liệu
+## 📂 Cấu trúc thư mục
 
-Toàn bộ dữ liệu (số dư, XP, cảnh cáo, cài đặt server...) lưu trong file `bot.db`
-(SQLite, tự tạo khi chạy lần đầu). Dùng `/backup` để xuất dữ liệu server ra JSON,
-`/restore` để nhập lại.
+```
+loop-on-in-one/
+├── cogs/
+│   ├── economy.py       # Hệ thống kinh tế
+│   ├── fun.py            # Game giải trí / cờ bạc ảo
+│   ├── help.py            # Lệnh trợ giúp
+│   ├── info.py             # Thông tin server/user/bot
+│   ├── keyword.py           # Từ khóa tự động phản hồi
+│   ├── settings.py           # Cài đặt server (Admin)
+│   └── utility.py              # Tiện ích chung
+├── database/
+│   ├── __init__.py
+│   └── db_manager.py            # Quản lý CSDL SQLite (aiosqlite)
+├── utils/
+│   └── helpers.py                 # Hàm tiện ích dùng chung
+├── .env.example
+├── .gitignore
+├── config.json                      # Cấu hình mặc định
+├── main.py                           # Điểm khởi động bot
+├── README.md
+└── requirements.txt
+```
 
-## 🔒 Bảo mật
+<br>
 
-- Toàn bộ lệnh admin đều kiểm tra quyền `Administrator` hoặc `Moderate Members`
-  trước khi thực thi.
-- Người dùng bị `/blacklist` sẽ bị chặn ở **mọi** slash command (kiểm tra ở tầng
-  `CommandTree`, không thể bypass bằng cách gọi cog khác).
-- Không có lệnh chạy code tùy ý (`exec`, `eval`...).
+## 📋 Danh sách lệnh đầy đủ
 
-## 🤝 Đóng góp
+<details>
+<summary><b>Xem toàn bộ 27 lệnh</b></summary>
 
-Pull request luôn được chào đón! Khi thêm cog mới, nhớ:
-1. Đăng ký cog trong `INITIAL_COGS` ở `main.py`.
-2. Thêm nhóm lệnh mới vào `cogs/help.py` để `/help` hiển thị đầy đủ.
-3. Dùng `utils/helpers.py` (`make_embed`, `success_embed`, `error_embed`) để đồng
-   bộ giao diện.
+| Lệnh | Mô tả |
+|------|-------|
+| `/daily` | Điểm danh nhận thưởng |
+| `/balance [user]` | Xem số dư |
+| `/top` | Bảng xếp hạng |
+| `/transfer <user> <amount>` | Chuyển tiền |
+| `/work` | Làm việc kiếm tiền |
+| `/shop` | Xem cửa hàng |
+| `/buy <item>` | Mua vật phẩm |
+| `/taixiu` | Chơi Tài Xỉu |
+| `/baucua` | Chơi Bầu Cua |
+| `/coinflip <amount> <choice>` | Tung đồng xu cược |
+| `/rollfun` | Xúc xắc vui |
+| `/flipfun` | Đồng xu vui |
+| `/setkeyword <keyword> <response>` | Tạo từ khóa |
+| `/delkeyword <keyword>` | Xóa từ khóa |
+| `/listkeyword` | Danh sách từ khóa |
+| `/setwelcome <channel>` | [Admin] Kênh chào mừng |
+| `/setgoodbye <channel>` | [Admin] Kênh tạm biệt |
+| `/setvoicelog <channel>` | [Admin] Kênh log voice |
+| `/setcurrency <name>` | [Admin] Đổi tên tiền tệ |
+| `/serverinfo` | Thông tin server |
+| `/userinfo [user]` | Thông tin user |
+| `/botinfo` | Thông tin bot |
+| `/ping` | Độ trễ bot |
+| `/avatar [user]` | Xem avatar |
+| `/roll` | Xúc xắc 1-6 |
+| `/flip` | Tung đồng xu |
+| `/help` | Danh sách lệnh |
 
+</details>
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Python](https://img.shields.io/badge/python-3.8%2B-green)
-![Discord](https://img.shields.io/badge/discord.py-py-blueviolet)
-![Status](https://img.shields.io/badge/status-active-brightgreen)
+<br>
+
+## 🔐 Bảo mật
+
+- ✅ Toàn bộ lệnh trong `settings.py` yêu cầu quyền **Administrator**
+- ✅ Không có lệnh `exec`/`eval` hay bất kỳ cơ chế thực thi code tùy ý nào
+- ✅ Dữ liệu người dùng lưu cục bộ trong SQLite (`bot.db`), không gửi ra ngoài
+
+<br>
+
+## 🗄️ Cơ sở dữ liệu
+
+Bot dùng **SQLite** thông qua `aiosqlite`, tự động tạo file `bot.db` và các bảng cần thiết khi khởi động lần đầu. Không cần cài đặt server database riêng.
+
+<br>
+
+## 📝 Giấy phép
+
+Dự án sử dụng tự do cho mục đích cá nhân/học tập.
+
+<div align="center">
+
+---
+
+Made with Noel Nguyen for the Discord community
+
+</div>
