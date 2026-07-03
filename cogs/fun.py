@@ -6,9 +6,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands
  
-from utils.helpers import make_embed, success_embed, error_embed, format_number
- 
+from utils.helpers import make_embed, success_embed, error_embed, format_number, get_category_color
+
 logger = logging.getLogger("bot.fun")
+COLOR_TAIXIU = get_category_color("taixiu")
+COLOR_BAUCUA = get_category_color("baucua")
+COLOR_COINFLIP = get_category_color("coinflip")
+COLOR_FUN = get_category_color("fun")
  
 DICE_EMOJIS = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"]
 BAUCUA_ANIMALS = {
@@ -167,13 +171,13 @@ class Fun(commands.Cog):
     @app_commands.command(name="rollfun", description="Tung xí ngầu vui (không cược)")
     async def rollfun(self, interaction: discord.Interaction):
         result = random.randint(1, 6)
-        embed = make_embed("🎲 Kết quả xúc xắc", f"{DICE_EMOJIS[result - 1]} Bạn đổ ra số **{result}**!")
+        embed = make_embed("🎲 Kết quả xúc xắc", f"{DICE_EMOJIS[result - 1]} Bạn đổ ra số **{result}**!", color=COLOR_FUN)
         await interaction.response.send_message(embed=embed)
  
     @app_commands.command(name="flipfun", description="Tung đồng xu vui (không cược)")
     async def flipfun(self, interaction: discord.Interaction):
         result = random.choice(["Sấp", "Ngửa"])
-        embed = make_embed("🪙 Kết quả tung đồng xu", f"Đồng xu ra mặt: **{result}**!")
+        embed = make_embed("🪙 Kết quả tung đồng xu", f"Đồng xu ra mặt: **{result}**!", color=COLOR_FUN)
         await interaction.response.send_message(embed=embed)
  
     # -------------------------------------------------------------
@@ -186,12 +190,12 @@ class Fun(commands.Cog):
             "🎲 TÀI XỈU",
             "Chọn **TÀI** (tổng 11-17) hoặc **XỈU** (tổng 4-10) rồi nhập số tiền cược.\n"
             f"Mức cược: {format_number(self.config['min_bet'])} - {format_number(self.config['max_bet'])}",
-            color=0xF39C12,
+            color=COLOR_TAIXIU,
         )
         await interaction.response.send_message(embed=embed, view=TaiXiuView(self))
  
     async def run_taixiu(self, interaction: discord.Interaction, choice: str, amount: int):
-        countdown_embed = make_embed("🎲 Đang lắc xí ngầu...", "🎰 Kết quả sẽ có sau giây lát!", color=0xF39C12)
+        countdown_embed = make_embed("🎲 Đang lắc xí ngầu...", "🎰 Kết quả sẽ có sau giây lát!", color=COLOR_TAIXIU)
         await interaction.response.send_message(embed=countdown_embed)
         message = await interaction.original_response()
  
@@ -200,7 +204,7 @@ class Fun(commands.Cog):
             spin_embed = make_embed(
                 "🎲 Đang lắc xí ngầu...",
                 f"{'🎲 ' * remaining}\nCòn **{remaining}s**...",
-                color=0xF39C12,
+                color=COLOR_TAIXIU,
             )
             await message.edit(embed=spin_embed)
  
@@ -245,18 +249,18 @@ class Fun(commands.Cog):
             "🎡 BẦU CUA TÔM CÁ",
             f"{animals_str}\n\nChọn 1 hoặc nhiều con vật để cược từ menu bên dưới.\n"
             f"Mức cược mỗi con: {format_number(self.config['min_bet'])} - {format_number(self.config['max_bet'])}",
-            color=0x9B59B6,
+            color=COLOR_BAUCUA,
         )
         await interaction.response.send_message(embed=embed, view=BauCuaView(self))
  
     async def run_baucua(self, interaction: discord.Interaction, choices: list, amount_per: int):
-        countdown_embed = make_embed("🎡 Đang quay Bầu Cua...", "🎰 Kết quả sẽ có sau giây lát!", color=0x9B59B6)
+        countdown_embed = make_embed("🎡 Đang quay Bầu Cua...", "🎰 Kết quả sẽ có sau giây lát!", color=COLOR_BAUCUA)
         await interaction.response.send_message(embed=countdown_embed)
         message = await interaction.original_response()
  
         for remaining in [3, 2, 1]:
             await asyncio.sleep(1)
-            spin_embed = make_embed("🎡 Đang quay Bầu Cua...", f"🎡 Còn **{remaining}s**...", color=0x9B59B6)
+            spin_embed = make_embed("🎡 Đang quay Bầu Cua...", f"🎡 Còn **{remaining}s**...", color=COLOR_BAUCUA)
             await message.edit(embed=spin_embed)
  
         await asyncio.sleep(1)
@@ -287,7 +291,7 @@ class Fun(commands.Cog):
         won_overall = net > 0
         await self.db.update_win_loss(interaction.user.id, interaction.guild_id, won_overall)
  
-        embed_color = 0x2ECC71 if net >= 0 else 0xE74C3C
+        embed_color = COLOR_BAUCUA if net >= 0 else 0xED4245  # tím nếu lãi/hòa, đỏ nếu lỗ
         result_embed = make_embed(
             "🎡 Kết quả Bầu Cua",
             f"Kết quả quay: {rolled_str}\n\n" + "\n".join(lines) +
