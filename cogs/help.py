@@ -1,3 +1,7 @@
+"""
+cogs/help.py
+Lệnh trợ giúp hiển thị danh sách lệnh theo nhóm
+"""
 
 import discord
 from discord import app_commands
@@ -5,32 +9,45 @@ from discord.ext import commands
 
 from utils.helpers import make_embed
 
-CATEGORIES = {
-    "🪙 Kinh tế": [
-        "balance", "daily", "work", "shop", "additem", "buy", "sell",
-        "give", "rob", "gamble", "leaderboard", "pay_all",
+HELP_DATA = {
+    "💰 Kinh tế": [
+        ("/daily", "Điểm danh nhận thưởng mỗi ngày"),
+        ("/balance", "Xem số dư của bạn hoặc người khác"),
+        ("/top", "Bảng xếp hạng người giàu nhất"),
+        ("/transfer", "Chuyển tiền cho người khác"),
+        ("/work", "Làm việc kiếm tiền (cooldown 1 phút)"),
+        ("/shop", "Xem cửa hàng vật phẩm"),
+        ("/buy", "Mua vật phẩm từ cửa hàng"),
     ],
-    "📊 Level / XP": [
-        "rank", "leaderboard_xp", "reset_levels", "add_xp", "set_level",
-        "level_role", "double_xp", "set_xp_rate", "ignore_channel",
+    "🎮 Giải trí & Game": [
+        ("/taixiu", "Chơi Tài Xỉu có cược"),
+        ("/baucua", "Chơi Bầu Cua Tôm Cá có cược"),
+        ("/coinflip", "Tung đồng xu có cược"),
+        ("/rollfun", "Tung xí ngầu vui (không cược)"),
+        ("/flipfun", "Tung đồng xu vui (không cược)"),
     ],
-    "🛡️ Moderation": [
-        "warn", "warnings", "remove_warn", "mute", "unmute", "timeout",
-        "kick", "ban", "unban", "clear", "slowmode",
+    "🔑 Từ khóa": [
+        ("/setkeyword", "Tạo từ khóa tự động phản hồi"),
+        ("/delkeyword", "Xóa từ khóa"),
+        ("/listkeyword", "Xem danh sách từ khóa"),
     ],
-    "🎮 Giải trí": [
-        "avatar", "server_info", "user_info", "ping", "roll", "flip",
-        "eightball", "quote", "suggest", "poll",
+    "⚙️ Cài đặt (Admin)": [
+        ("/setwelcome", "Đặt kênh chào mừng"),
+        ("/setgoodbye", "Đặt kênh tạm biệt"),
+        ("/setvoicelog", "Đặt kênh log voice"),
+        ("/setcurrency", "Đổi tên đơn vị tiền tệ"),
     ],
-    "🎁 Role": ["give_role", "remove_role", "autorole", "mute_role"],
-    "🔧 Log & Auto-Mod": ["set_log", "auto_mod", "anti_spam", "anti_link", "anti_mention"],
-    "🎨 Cài đặt server": [
-        "set_prefix", "set_currency", "set_welcome", "set_goodbye",
-        "set_rank_channel", "reset_server",
+    "ℹ️ Thông tin": [
+        ("/serverinfo", "Thông tin server"),
+        ("/userinfo", "Thông tin user"),
+        ("/botinfo", "Thông tin bot"),
     ],
-    "📈 Thống kê": ["server_stats", "user_stats", "top_activity", "bot_info"],
-    "🔐 Admin": ["backup", "restore", "blacklist", "whitelist"],
-    "🧠 Đặc biệt": ["marry", "divorce", "profile"],
+    "🛠️ Tiện ích": [
+        ("/ping", "Kiểm tra độ trễ"),
+        ("/avatar", "Xem avatar"),
+        ("/roll", "Tung xí ngầu 1-6"),
+        ("/flip", "Tung đồng xu"),
+    ],
 }
 
 
@@ -38,18 +55,15 @@ class Help(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="help", description="Xem danh sách toàn bộ lệnh của bot theo nhóm")
-    async def help_cmd(self, interaction: discord.Interaction):
-        embed = make_embed(
-            "📖 Danh sách lệnh — loop-on-in-one",
-            "Tất cả lệnh đều dùng dạng slash `/`. Gõ `/` để Discord tự gợi ý.",
-        )
-        for category, commands_list in CATEGORIES.items():
-            embed.add_field(
-                name=category,
-                value=" • ".join(f"`/{c}`" for c in commands_list),
-                inline=False,
-            )
+    @app_commands.command(name="help", description="Hiển thị danh sách tất cả lệnh của bot")
+    async def help(self, interaction: discord.Interaction):
+        embed = make_embed("📖 Danh sách lệnh", "Dưới đây là tất cả các lệnh được nhóm theo chức năng:")
+
+        for group, commands_list in HELP_DATA.items():
+            value = "\n".join(f"`{cmd}` — {desc}" for cmd, desc in commands_list)
+            embed.add_field(name=group, value=value, inline=False)
+
+        embed.set_footer(text="Dùng lệnh slash (/) để tương tác với bot")
         await interaction.response.send_message(embed=embed)
 
 
