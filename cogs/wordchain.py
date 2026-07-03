@@ -1,161 +1,278 @@
 """
-cogs/keyword.py
-Hệ thống từ khóa tự động phản hồi
-Chỉ Admin mới được tạo từ khóa mới (tránh spam/lạm dụng); ai cũng xem được danh sách.
+cogs/wordchain.py
+Trò chơi Nối Từ (Tiếng Việt / English) chơi theo từng kênh.
 
-Gộp 3 lệnh set/del/list vào 1 nhóm lệnh "/keyword" (subcommand) để danh sách
-slash command của bot gọn hơn: /keyword set, /keyword del, /keyword list
+Luật:
+- Tiếng Việt: mỗi từ gồm 2 âm tiết, âm tiết ĐẦU phải trùng âm tiết CUỐI của từ
+  trước đó. VD: "con mèo" -> "mèo con" -> "con chó" -> ...
+- English: mỗi từ nối bắt đầu bằng chữ cái CUỐI của từ trước đó.
+  VD: "apple" -> "elephant" -> "tiger" -> ...
+
+Người chơi gõ từ tiếp theo THẲNG vào kênh chat (không cần dùng lệnh) - giống
+cách chơi nối từ truyền thống. Bot không dùng từ điển ngoài (không có mạng để
+tải), nên chỉ kiểm tra ĐÚNG LUẬT NỐI + CHƯA TỪNG DÙNG, không kiểm tra từ đó có
+thật sự "có nghĩa" hay không - để cả nhóm bạn bè tự thống nhất luật chơi.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import random
+from typing import Optional
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils.helpers import make_embed, success_embed, error_embed, check_admin
+from utils.helpers import make_embed, success_embed, error_embed, get_category_color
 
-logger = logging.getLogger("bot.keyword")
+logger = logging.getLogger("bot.wordchain")
+CAT_COLOR = get_category_color("wordchain")
 
-# Giới hạn số lượng từ khóa tối đa mỗi server để tránh spam làm đầy database
-MAX_KEYWORDS_PER_GUILD = 100
+TURN_TIMEOUT_SECONDS = 60  # Không ai nối từ trong khoảng này -> tự kết thúc ván
+
+VI_STARTERS = ["con mèo", "bàn ghế", "học sinh", "hoa hồng", "máy tính", "sách vở", "bạn bè", "yêu thương"]
+EN_STARTERS = ["apple", "tiger", "orange", "dragon", "planet", "guitar", "yellow", "window"]
 
 
-class Keyword(commands.Cog):
+class WordChainGame:
+    """Trạng thái của 1 ván nối từ đang diễn ra trong 1 kênh."""
+
+    def __init__(self, mode: str, starter_word: str, started_by: int):
+        self.mode = mode  # "vi" hoặc "en"
+        self.current_word = starter_word.lower().strip()
+        self.used_words = {self.current_word}
+        self.scores: dict[int, int] = {}
+        self.started_by = started_by
+        self.turn_task: Optional[asyncio.Task] = None
+
+    def _tail(self) -> str:
+        """Phần người chơi TIẾP THEO cần nối vào: âm tiết cuối (VI) / chữ cái cuối (EN)."""
+        if self.mode == "vi":
+            return self.current_word.split()[-1]
+        return self.current_word[-1]
+
+    def _head(self, word: str) -> str:
+        if self.mode == "vi":
+            return word.split()[0]
+        return word[0]
+
+    def _is_valid_format(self, word: str) -> bool:
+        if self.mode == "vi":
+            parts = word.split()
+            return len(parts) == 2 and all(p.isalpha() for p in parts)
+        return word.isalpha() and len(word) >= 2
+
+    def try_play(self, raw_word: str, user_id: int) -> tuple[bool, str]:
+        """Thử nối từ. Trả về (thành_công, lý_do).
+        lý do: "ok" | "format" (sai định dạng, bỏ qua) | "used" (đã dùng) | "chain" (không nối đúng)"""
+        word = raw_word.lower().strip()
+        if not self._is_valid_format(word):
+            return False, "format"
+        if word in self.used_words:
+            return False, "used"
+        if self._head(word) != self._tail():
+            return False, "chain"
+
+        self.current_word = word
+        self.used_words.add(word)
+        self.scores[user_id] = self.scores.get(user_id, 0) + 1
+        return True, "ok"
+
+
+class WordChain(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.db = bot.db
-        self.config = bot.config
-        # Cache từ khóa theo guild để tránh query DB trên mỗi tin nhắn.
-        # Bị xóa (invalidate) mỗi khi có thêm/xóa từ khóa trong guild đó.
-        self._keyword_cache: dict[int, list] = {}
+        self.games: dict[int, WordChainGame] = {}  # channel_id -> ván đang chơi
 
-    async def _get_cached_keywords(self, guild_id: int) -> list:
-        if guild_id not in self._keyword_cache:
-            self._keyword_cache[guild_id] = await self.db.get_all_keywords(guild_id)
-        return self._keyword_cache[guild_id]
-
-    def _invalidate_cache(self, guild_id: int):
-        self._keyword_cache.pop(guild_id, None)
+    def cog_unload(self):
+        for game in self.games.values():
+            if game.turn_task and not game.turn_task.done():
+                game.turn_task.cancel()
 
     # -------------------------------------------------------------
-    # Nhóm lệnh /keyword
+    # Nhóm lệnh /noitu
     # -------------------------------------------------------------
-    keyword_group = app_commands.Group(name="keyword", description="Quản lý từ khóa tự động phản hồi")
+    noitu_group = app_commands.Group(name="noitu", description="Trò chơi Nối Từ trong kênh")
 
     # -------------------------------------------------------------
-    # /keyword set
+    # /noitu start
     # -------------------------------------------------------------
-    @keyword_group.command(name="set", description="[Admin] Tạo từ khóa tự động phản hồi")
-    @app_commands.describe(keyword="Từ khóa kích hoạt", response="Nội dung bot sẽ trả lời")
-    @app_commands.default_permissions(administrator=True)
-    @app_commands.checks.has_permissions(administrator=True)
-    @app_commands.checks.cooldown(1, 5, key=lambda i: (i.guild_id, i.user.id))
-    async def keyword_set(self, interaction: discord.Interaction, keyword: str, response: str):
-        keyword = keyword.strip().lower()
-        if len(keyword) < 2:
-            await interaction.response.send_message(embed=error_embed("Từ khóa phải có ít nhất 2 ký tự."), ephemeral=True)
-            return
-
-        current_count = await self.db.count_keywords(interaction.guild_id)
-        if current_count >= MAX_KEYWORDS_PER_GUILD:
+    @noitu_group.command(name="start", description="Bắt đầu ván nối từ (Anh/Việt) trong kênh")
+    @app_commands.describe(mode="Chọn ngôn ngữ chơi")
+    @app_commands.choices(mode=[
+        app_commands.Choice(name="Tiếng Việt", value="vi"),
+        app_commands.Choice(name="English", value="en"),
+    ])
+    async def start(self, interaction: discord.Interaction, mode: app_commands.Choice[str]):
+        channel_id = interaction.channel_id
+        if channel_id in self.games:
             await interaction.response.send_message(
-                embed=error_embed(f"Server đã đạt giới hạn **{MAX_KEYWORDS_PER_GUILD}** từ khóa. Hãy xóa bớt trước khi thêm mới."),
+                embed=error_embed("Kênh này đang có ván nối từ diễn ra. Dùng `/noitu stop` để dừng trước."),
                 ephemeral=True,
             )
             return
 
-        success = await self.db.add_keyword(interaction.guild_id, keyword, response, interaction.user.id)
-        if success:
-            self._invalidate_cache(interaction.guild_id)
-            embed = success_embed(f"Đã tạo từ khóa `{keyword}` → \"{response}\"")
-        else:
-            embed = error_embed(f"Từ khóa `{keyword}` đã tồn tại. Hãy xóa trước nếu muốn thay đổi.")
-        await interaction.response.send_message(embed=embed)
+        starter = random.choice(VI_STARTERS if mode.value == "vi" else EN_STARTERS)
+        game = WordChainGame(mode.value, starter, interaction.user.id)
+        self.games[channel_id] = game
+        self._reset_timeout(interaction.channel)
 
-    @keyword_set.error
-    async def keyword_set_error(self, interaction: discord.Interaction, error):
-        if isinstance(error, app_commands.CommandOnCooldown):
-            await interaction.response.send_message(
-                embed=error_embed(f"⏳ Vui lòng đợi **{error.retry_after:.1f} giây** trước khi tạo từ khóa tiếp theo."),
-                ephemeral=True,
+        if mode.value == "vi":
+            rule_text = (
+                "Mỗi từ nối gồm **2 âm tiết**, âm tiết đầu phải trùng âm tiết cuối của từ trước.\n"
+                "VD: `con mèo` → `mèo con` → `con chó` ..."
             )
         else:
-            raise error
-
-    # -------------------------------------------------------------
-    # /keyword del
-    # -------------------------------------------------------------
-    @keyword_group.command(name="del", description="Xóa một từ khóa")
-    @app_commands.describe(keyword="Từ khóa cần xóa")
-    async def keyword_del(self, interaction: discord.Interaction, keyword: str):
-        keyword = keyword.strip().lower()
-        existing = await self.db.get_keyword(interaction.guild_id, keyword)
-
-        if existing is None:
-            await interaction.response.send_message(embed=error_embed("Từ khóa không tồn tại."), ephemeral=True)
-            return
-
-        is_admin = check_admin(interaction.user)
-        is_creator = str(interaction.user.id) == existing["created_by"]
-
-        if not (is_admin or is_creator):
-            await interaction.response.send_message(
-                embed=error_embed("Bạn chỉ có thể xóa từ khóa do mình tạo, hoặc cần quyền Admin."),
-                ephemeral=True,
+            rule_text = (
+                "Mỗi từ nối bắt đầu bằng **chữ cái cuối** của từ trước.\n"
+                "VD: `apple` → `elephant` → `tiger` ..."
             )
-            return
 
-        await self.db.delete_keyword(interaction.guild_id, keyword)
-        self._invalidate_cache(interaction.guild_id)
-        await interaction.response.send_message(embed=success_embed(f"Đã xóa từ khóa `{keyword}`."))
-
-    # -------------------------------------------------------------
-    # /keyword list
-    # -------------------------------------------------------------
-    @keyword_group.command(name="list", description="Xem danh sách từ khóa trong server")
-    async def keyword_list(self, interaction: discord.Interaction):
-        rows = await self.db.get_all_keywords(interaction.guild_id)
-
-        if not rows:
-            await interaction.response.send_message(embed=error_embed("Server chưa có từ khóa nào."))
-            return
-
-        lines = [f"`{row['keyword']}` — dùng {row['usage_count']} lần" for row in rows]
-        # Discord embed field giới hạn 1024 ký tự, chia nhỏ nếu cần
-        text = "\n".join(lines)
-        if len(text) > 4000:
-            text = text[:4000] + "\n... (còn nhiều hơn)"
-
-        embed = make_embed(f"📋 Danh sách từ khóa ({len(rows)})", text)
+        embed = make_embed(
+            "🔤 Ván Nối Từ bắt đầu!",
+            f"{rule_text}\n\n"
+            f"🟢 Từ đầu tiên: **{starter}**\n"
+            f"👉 Ai cũng có thể gõ từ tiếp theo thẳng vào kênh (không cần gõ lệnh).\n"
+            f"⏳ Nếu không ai nối trong **{TURN_TIMEOUT_SECONDS}s**, ván sẽ tự kết thúc.",
+            color=CAT_COLOR,
+        )
         await interaction.response.send_message(embed=embed)
 
     # -------------------------------------------------------------
-    # Listener: tự động phản hồi khi có từ khóa trong tin nhắn
+    # /noitu stop
+    # -------------------------------------------------------------
+    @noitu_group.command(name="stop", description="Dừng ván nối từ trong kênh")
+    async def stop(self, interaction: discord.Interaction):
+        game = self.games.get(interaction.channel_id)
+        if not game:
+            await interaction.response.send_message(
+                embed=error_embed("Kênh này không có ván nối từ nào đang diễn ra."), ephemeral=True
+            )
+            return
+
+        is_admin = isinstance(interaction.user, discord.Member) and interaction.user.guild_permissions.administrator
+        if interaction.user.id != game.started_by and not is_admin:
+            await interaction.response.send_message(
+                embed=error_embed("Chỉ người đã bắt đầu ván hoặc Admin mới được dừng."), ephemeral=True
+            )
+            return
+
+        await self._end_game(interaction.channel, reason="⏹️ Ván đã bị dừng thủ công.")
+        await interaction.response.send_message(embed=success_embed("Đã dừng ván nối từ."))
+
+    # -------------------------------------------------------------
+    # /noitu score
+    # -------------------------------------------------------------
+    @noitu_group.command(name="score", description="Xem bảng điểm ván nối từ hiện tại")
+    async def score(self, interaction: discord.Interaction):
+        game = self.games.get(interaction.channel_id)
+        if not game:
+            await interaction.response.send_message(
+                embed=error_embed("Kênh này không có ván nối từ nào đang diễn ra."), ephemeral=True
+            )
+            return
+
+        if not game.scores:
+            embed = make_embed(
+                "📊 Bảng điểm Nối Từ",
+                f"Chưa có ai nối được từ nào.\n🔤 Từ hiện tại: **{game.current_word}**",
+                color=CAT_COLOR,
+            )
+            await interaction.response.send_message(embed=embed)
+            return
+
+        ranked = sorted(game.scores.items(), key=lambda x: x[1], reverse=True)
+        medals = ["🥇", "🥈", "🥉"]
+        lines = []
+        for idx, (uid, score) in enumerate(ranked):
+            member = interaction.guild.get_member(uid)
+            name = member.display_name if member else f"User {uid}"
+            prefix = medals[idx] if idx < 3 else f"**#{idx + 1}**"
+            lines.append(f"{prefix} {name} — **{score}** từ")
+
+        embed = make_embed(
+            "📊 Bảng điểm Nối Từ",
+            "\n".join(lines) + f"\n\n🔤 Từ hiện tại: **{game.current_word}**",
+            color=CAT_COLOR,
+        )
+        await interaction.response.send_message(embed=embed)
+
+    # -------------------------------------------------------------
+    # Người chơi gõ từ trực tiếp vào kênh (không cần lệnh)
     # -------------------------------------------------------------
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot or message.guild is None:
             return
+        game = self.games.get(message.channel.id)
+        if not game:
+            return
 
-        content_lower = message.content.lower()
-        rows = await self._get_cached_keywords(message.guild.id)  # dùng cache, không query DB mỗi tin nhắn
+        content = message.content.strip()
+        if not content:
+            return
 
-        for row in rows:
-            if row["keyword"] in content_lower:
-                try:
-                    await message.channel.send(row["response"])
-                    await self.db.increment_keyword_usage(message.guild.id, row["keyword"])
-                except discord.HTTPException as e:
-                    logger.error(f"Không thể gửi phản hồi từ khóa: {e}")
-                break  # chỉ phản hồi 1 từ khóa đầu tiên khớp để tránh spam
+        ok, reason = game.try_play(content, message.author.id)
+        if ok:
+            self._reset_timeout(message.channel)
+            try:
+                await message.add_reaction("✅")
+            except discord.HTTPException:
+                pass
+        elif reason in ("used", "chain"):
+            # Chỉ react ❌ khi tin nhắn ĐÚNG ĐỊNH DẠNG từ nối (2 âm tiết / 1 từ Anh)
+            # nhưng sai luật (trùng hoặc không nối được) - tránh spam ❌ vào MỌI
+            # tin nhắn chat bình thường không liên quan đến ván chơi.
+            try:
+                await message.add_reaction("❌")
+            except discord.HTTPException:
+                pass
+
+    # -------------------------------------------------------------
+    # Tự động kết thúc ván khi hết giờ
+    # -------------------------------------------------------------
+    def _reset_timeout(self, channel: discord.abc.Messageable):
+        game = self.games.get(channel.id)
+        if not game:
+            return
+        if game.turn_task and not game.turn_task.done():
+            game.turn_task.cancel()
+        game.turn_task = asyncio.create_task(self._timeout_watch(channel))
+
+    async def _timeout_watch(self, channel: discord.abc.Messageable):
+        try:
+            await asyncio.sleep(TURN_TIMEOUT_SECONDS)
+        except asyncio.CancelledError:
+            return
+        await self._end_game(channel, reason=f"⏰ Hết giờ! Không ai nối từ trong {TURN_TIMEOUT_SECONDS} giây.")
+
+    async def _end_game(self, channel: discord.abc.Messageable, reason: str):
+        game = self.games.pop(channel.id, None)
+        if not game:
+            return
+        if game.turn_task and not game.turn_task.done():
+            game.turn_task.cancel()
+
+        if game.scores:
+            winner_id = max(game.scores, key=game.scores.get)
+            member = channel.guild.get_member(winner_id) if isinstance(channel, discord.TextChannel) else None
+            winner_name = member.display_name if member else f"User {winner_id}"
+            desc = (
+                f"{reason}\n\n"
+                f"🏆 Người thắng: **{winner_name}** ({game.scores[winner_id]} từ)\n"
+                f"📝 Tổng số từ đã nối: **{len(game.used_words) - 1}**"
+            )
+        else:
+            desc = f"{reason}\n\nChưa có ai nối được từ nào trong ván này."
+
+        embed = make_embed("🏁 Ván Nối Từ kết thúc", desc, color=CAT_COLOR)
+        try:
+            await channel.send(embed=embed)
+        except discord.HTTPException:
+            pass
 
 
 async def setup(bot: commands.Bot):
-    # Lưu ý: app_commands.Group được khai báo là class attribute (keyword_group)
-    # nên discord.py sẽ TỰ ĐỘNG đăng ký nhóm lệnh này vào command tree khi
-    # add_cog() chạy - không cần gọi bot.tree.add_command() thủ công (nếu gọi
-    # thêm sẽ bị lỗi "command already registered").
-    await bot.add_cog(Keyword(bot))
+    await bot.add_cog(WordChain(bot))
