@@ -11,9 +11,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils.helpers import make_embed, success_embed, error_embed, format_number
+from utils.helpers import make_embed, success_embed, error_embed, format_number, get_category_color, progress_bar
 
 logger = logging.getLogger("bot.economy")
+CAT_COLOR = get_category_color("economy")
 
 # Cửa hàng mẫu (item_id: {name, price, description})
 SHOP_ITEMS = {
@@ -77,10 +78,12 @@ class Economy(commands.Cog):
         await self.db.update_daily(user_id, guild_id, streak, now)
 
         currency = await self.get_currency_name(guild_id)
+        streak_bar = progress_bar(min(streak, 50), 50)
         embed = success_embed(
             f"🎁 Bạn nhận được **{format_number(total)} {currency}**!\n"
             f"(Cơ bản: {format_number(base)} + Thưởng streak: {format_number(bonus)})\n"
-            f"🔥 Chuỗi điểm danh: **{streak} ngày**",
+            f"🔥 Chuỗi điểm danh: **{streak} ngày**\n"
+            f"{streak_bar} (tối đa thưởng ở streak 50)",
             title="Điểm danh thành công",
         )
         await interaction.response.send_message(embed=embed)
@@ -98,6 +101,7 @@ class Economy(commands.Cog):
         embed = make_embed(
             f"💰 Số dư của {target.display_name}",
             f"**{format_number(row['balance'])} {currency}**",
+            color=CAT_COLOR,
         )
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.add_field(name="🏆 Thắng", value=str(row["total_wins"]), inline=True)
@@ -124,7 +128,7 @@ class Economy(commands.Cog):
             name = member.display_name if member else f"User {row['user_id']}"
             lines.append(f"{prefix} {name} — {format_number(row['balance'])} {currency}")
 
-        embed = make_embed("🏆 Bảng xếp hạng", "\n".join(lines))
+        embed = make_embed("🏆 Bảng xếp hạng", "\n".join(lines), color=CAT_COLOR)
         await interaction.response.send_message(embed=embed)
 
     # -------------------------------------------------------------
@@ -203,7 +207,7 @@ class Economy(commands.Cog):
     @app_commands.command(name="shop", description="Xem cửa hàng vật phẩm")
     async def shop(self, interaction: discord.Interaction):
         currency = await self.get_currency_name(interaction.guild_id)
-        embed = make_embed("🛒 Cửa hàng", f"Dùng `/buy <item>` để mua. Đơn vị tiền tệ: {currency}")
+        embed = make_embed("🛒 Cửa hàng", f"Dùng `/buy <item>` để mua. Đơn vị tiền tệ: {currency}", color=CAT_COLOR)
         for item_id, item in SHOP_ITEMS.items():
             embed.add_field(
                 name=f"{item['name']} — `{item_id}`",
