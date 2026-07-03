@@ -1,11 +1,12 @@
 """
 cogs/economy.py
-Hệ thống kinh tế: daily, balance, top, transfer, work, shop, buy
+Hệ thống kinh tế: daily, balance, top, transfer, work, shop, buy, inventory
 """
 
 import time
 import random
 import logging
+from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
@@ -16,11 +17,13 @@ from utils.helpers import make_embed, success_embed, error_embed, format_number,
 logger = logging.getLogger("bot.economy")
 CAT_COLOR = get_category_color("economy")
 
-# Cửa hàng mẫu (item_id: {name, price, description})
+# Cửa hàng mẫu (item_id: {name, price, description, stackable})
+# stackable=False: vật phẩm kiểu "danh hiệu" - chỉ sở hữu 1 lần, mua lại sẽ bị chặn
+# stackable=True: vật phẩm tiêu hao - có thể mua nhiều lần, cộng dồn số lượng
 SHOP_ITEMS = {
-    "vip": {"name": "🎖️ Thẻ VIP", "price": 5000, "description": "Danh hiệu VIP trong server"},
-    "badge": {"name": "🏅 Huy hiệu đặc biệt", "price": 2000, "description": "Huy hiệu hiển thị trên profile"},
-    "luck": {"name": "🍀 Bùa may mắn", "price": 1000, "description": "Tăng may mắn khi chơi game (chỉ mang tính giải trí)"},
+    "vip": {"name": "🎖️ Thẻ VIP", "price": 5000, "description": "Danh hiệu VIP trong server", "stackable": False},
+    "badge": {"name": "🏅 Huy hiệu đặc biệt", "price": 2000, "description": "Huy hiệu hiển thị trên profile", "stackable": False},
+    "luck": {"name": "🍀 Bùa may mắn", "price": 1000, "description": "Tăng may mắn khi chơi game (chỉ mang tính giải trí)", "stackable": True},
 }
 
 SECONDS_IN_DAY = 86400
@@ -209,9 +212,10 @@ class Economy(commands.Cog):
         currency = await self.get_currency_name(interaction.guild_id)
         embed = make_embed("🛒 Cửa hàng", f"Dùng `/buy <item>` để mua. Đơn vị tiền tệ: {currency}", color=CAT_COLOR)
         for item_id, item in SHOP_ITEMS.items():
+            type_note = "🔂 Chỉ mua 1 lần" if not item["stackable"] else "🔁 Có thể mua nhiều lần"
             embed.add_field(
                 name=f"{item['name']} — `{item_id}`",
-                value=f"{item['description']}\nGiá: **{format_number(item['price'])} {currency}**",
+                value=f"{item['description']}\nGiá: **{format_number(item['price'])} {currency}** · {type_note}",
                 inline=False,
             )
         await interaction.response.send_message(embed=embed)
@@ -232,6 +236,17 @@ class Economy(commands.Cog):
             return
 
         shop_item = SHOP_ITEMS[item]
+
+        # Vật phẩm kiểu "danh hiệu" (không stackable) chỉ được sở hữu 1 lần
+        if not shop_item["stackable"]:
+            existing = await self.db.get_inventory_item(interaction.user.id, interaction.guild_id, item)
+            if existing:
+                await interaction.response.send_message(
+                    embed=error_embed(f"Bạn đã sở hữu **{shop_item['name']}** rồi, không thể mua thêm."),
+                    ephemeral=True,
+                )
+                return
+
         user_row = await self.db.get_user(interaction.user.id, interaction.guild_id)
 
         if user_row["balance"] < shop_item["price"]:
@@ -239,10 +254,12 @@ class Economy(commands.Cog):
             return
 
         await self.db.update_balance(interaction.user.id, interaction.guild_id, -shop_item["price"])
+        await self.db.add_inventory_item(interaction.user.id, interaction.guild_id, item, 1, int(time.time()))
         currency = await self.get_currency_name(interaction.guild_id)
 
         embed = success_embed(
-            f"Bạn đã mua thành công **{shop_item['name']}** với giá **{format_number(shop_item['price'])} {currency}**!",
+            f"Bạn đã mua thành công **{shop_item['name']}** với giá **{format_number(shop_item['price'])} {currency}**!\n"
+            f"Dùng `/inventory` để xem túi đồ của bạn.",
             title="🛍️ Mua hàng thành công",
         )
         await interaction.response.send_message(embed=embed)
@@ -264,6 +281,36 @@ class Economy(commands.Cog):
             for item_id, item in SHOP_ITEMS.items()
             if current.lower() in item_id or current.lower() in item["name"].lower()
         ][:25]
+
+    # -------------------------------------------------------------
+    # /inventory
+    # -------------------------------------------------------------
+    @app_commands.command(name="inventory", description="Xem túi đồ vật phẩm đã mua")
+    @app_commands.describe(user="Người muốn xem túi đồ (bỏ trống để xem của bạn)")
+    async def inventory(self, interaction: discord.Interaction, user: discord.Member = None):
+        target = user or interaction.user
+        rows = await self.db.get_inventory(target.id, interaction.guild_id)
+
+        embed = make_embed(f"🎒 Túi đồ của {target.display_name}", color=CAT_COLOR)
+        embed.set_thumbnail(url=target.display_avatar.url)
+
+        if not rows:
+            embed.description = "Chưa sở hữu vật phẩm nào. Dùng `/shop` để xem cửa hàng."
+            await interaction.response.send_message(embed=embed)
+            return
+
+        for row in rows:
+            item = SHOP_ITEMS.get(row["item_id"])
+            name = item["name"] if item else f"❓ {row['item_id']} (đã ngừng bán)"
+            qty_text = f" ×{row['quantity']}" if row["quantity"] > 1 else ""
+            bought_dt = datetime.fromtimestamp(row["purchased_at"], tz=timezone.utc)
+            embed.add_field(
+                name=f"{name}{qty_text}",
+                value=f"Mua lúc: {discord.utils.format_dt(bought_dt, 'R')}",
+                inline=False,
+            )
+
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot: commands.Bot):
