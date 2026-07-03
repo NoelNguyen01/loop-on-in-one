@@ -18,10 +18,18 @@ class DBManager:
 
     async def connect(self):
         """Kết nối tới database và tạo bảng nếu chưa có"""
-        self._conn = await aiosqlite.connect(self.db_path)
+        # timeout: aiosqlite/sqlite3 sẽ tự đợi tối đa 30s nếu DB đang bị lock
+        # trước khi ném lỗi, thay vì crash ngay lập tức
+        self._conn = await aiosqlite.connect(self.db_path, timeout=30)
         self._conn.row_factory = aiosqlite.Row
+
+        # WAL cho phép đọc/ghi đồng thời tốt hơn với nhiều transaction song song
+        await self._conn.execute("PRAGMA journal_mode=WAL;")
+        # Lớp phòng thủ thứ 2 ở tầng SQLite: nếu gặp lock thì tự retry trong 5s
+        await self._conn.execute("PRAGMA busy_timeout=5000;")
+
         await self._create_tables()
-        logger.info(f"Đã kết nối database: {self.db_path}")
+        logger.info(f"Đã kết nối database: {self.db_path} (WAL mode, timeout=30s)")
 
     async def close(self):
         """Đóng kết nối database"""
@@ -185,6 +193,15 @@ class DBManager:
             (str(guild_id),),
         )
         return await cursor.fetchall()
+
+    async def count_keywords(self, guild_id: str) -> int:
+        """Đếm số lượng từ khóa hiện có của 1 server"""
+        cursor = await self._conn.execute(
+            "SELECT COUNT(*) AS cnt FROM keywords WHERE guild_id = ?",
+            (str(guild_id),),
+        )
+        row = await cursor.fetchone()
+        return row["cnt"] if row else 0
 
     async def increment_keyword_usage(self, guild_id: str, keyword: str):
         await self._conn.execute(
