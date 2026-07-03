@@ -12,6 +12,11 @@ tích hợp API/từ điển ngoài mới làm được điều đó). Bot chỉ
 nối, chưa từng dùng trong ván hiện tại, và đúng định dạng theo ngôn ngữ.
 """
 
+# QUAN TRỌNG: cho phép dùng cú pháp type hint mới (str | None, tuple[bool, str]...)
+# mà vẫn chạy được trên Python 3.8/3.9 (project khai báo hỗ trợ Python 3.8+ trong
+# README) - nếu thiếu dòng này, bot sẽ crash ngay khi load cog trên Python < 3.10.
+from __future__ import annotations
+
 import logging
 import unicodedata
 
