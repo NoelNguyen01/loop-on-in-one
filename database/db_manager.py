@@ -81,6 +81,16 @@ class DBManager:
                 leave_time INTEGER,
                 duration INTEGER
             );
+
+            CREATE TABLE IF NOT EXISTS inventory (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                guild_id TEXT NOT NULL,
+                item_id TEXT NOT NULL,
+                quantity INTEGER DEFAULT 1,
+                purchased_at INTEGER DEFAULT 0,
+                UNIQUE(user_id, guild_id, item_id)
+            );
             """
         )
         await self._conn.commit()
@@ -266,3 +276,56 @@ class DBManager:
             (leave_time, duration, log_id),
         )
         await self._conn.commit()
+
+    # ---------------------------------------------------------------
+    # INVENTORY
+    # ---------------------------------------------------------------
+    async def add_inventory_item(self, user_id: str, guild_id: str, item_id: str, quantity: int, timestamp: int):
+        """Thêm vật phẩm vào túi đồ. Nếu đã có thì cộng dồn số lượng
+        (ON CONFLICT dùng UNIQUE(user_id, guild_id, item_id) đã khai báo ở _create_tables)."""
+        await self._conn.execute(
+            """
+            INSERT INTO inventory (user_id, guild_id, item_id, quantity, purchased_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, guild_id, item_id)
+            DO UPDATE SET quantity = quantity + excluded.quantity, purchased_at = excluded.purchased_at
+            """,
+            (str(user_id), str(guild_id), item_id, quantity, timestamp),
+        )
+        await self._conn.commit()
+
+    async def get_inventory_item(self, user_id: str, guild_id: str, item_id: str) -> Optional[aiosqlite.Row]:
+        """Lấy 1 vật phẩm cụ thể trong túi đồ của user, None nếu chưa sở hữu"""
+        cursor = await self._conn.execute(
+            "SELECT * FROM inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?",
+            (str(user_id), str(guild_id), item_id),
+        )
+        return await cursor.fetchone()
+
+    async def get_inventory(self, user_id: str, guild_id: str) -> List[aiosqlite.Row]:
+        """Lấy toàn bộ túi đồ của 1 user, sắp xếp theo thời gian mua gần nhất"""
+        cursor = await self._conn.execute(
+            "SELECT * FROM inventory WHERE user_id = ? AND guild_id = ? ORDER BY purchased_at DESC",
+            (str(user_id), str(guild_id)),
+        )
+        return await cursor.fetchall()
+
+    async def remove_inventory_item(self, user_id: str, guild_id: str, item_id: str, quantity: int = 1) -> bool:
+        """Trừ bớt số lượng vật phẩm (dùng khi tiêu thụ vật phẩm sau này).
+        Xóa hẳn dòng nếu số lượng về 0. Trả về False nếu không đủ số lượng để trừ."""
+        row = await self.get_inventory_item(user_id, guild_id, item_id)
+        if row is None or row["quantity"] < quantity:
+            return False
+
+        if row["quantity"] == quantity:
+            await self._conn.execute(
+                "DELETE FROM inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?",
+                (str(user_id), str(guild_id), item_id),
+            )
+        else:
+            await self._conn.execute(
+                "UPDATE inventory SET quantity = quantity - ? WHERE user_id = ? AND guild_id = ? AND item_id = ?",
+                (quantity, str(user_id), str(guild_id), item_id),
+            )
+        await self._conn.commit()
+        return True
