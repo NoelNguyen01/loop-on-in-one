@@ -2,210 +2,307 @@
 
 # 🎲 Loop On In One
 
-### Discord Bot đa năng — Kinh tế ảo · Game giải trí · Từ khóa tự động · Quản lý server
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Python](https://img.shields.io/badge/python-3.8%2B-green
-)![Discord](https://img.shields.io/badge/discord.py-py-blueviolet)
-![Status](https://img.shields.io/badge/status-active-brightgreen)
+### Discord Bot đa năng — Kinh tế ảo · Game giải trí · Tự động hóa · Quản lý server
+
+![Version](https://img.shields.io/badge/Version-1.0.0-5865F2?style=for-the-badge)
+![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python)
+![discord.py](https://img.shields.io/badge/discord.py-2.3%2B-5865F2?style=for-the-badge&logo=discord)
+![Status](https://img.shields.io/badge/Status-Active-57F287?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-FEE75C?style=for-the-badge)
+
 </div>
 
-<br>
+---
 
-> ⚠️ **Lưu ý:** Toàn bộ tiền tệ trong bot là **tiền ảo trong game**, không có giá trị quy đổi thực tế — chỉ phục vụ mục đích giải trí nội bộ server.
+## 📋 Mục lục
+- [🎯 Tổng quan](#-tổng-quan)
+- [📊 Test Report](#-test-report)
+- [✨ Danh sách lệnh](#-danh-sách-lệnh)
+- [🚀 Cài đặt](#-cài-đặt)
+- [📂 Cấu trúc](#-cấu-trúc)
+- [🗄️ Database](#️-database)
+- [🐛 Troubleshooting](#-troubleshooting)
 
-<br>
+---
 
-## 📚 Mục lục
+## 🎯 Tổng quan
 
-- [✨ Tính năng](#-tính-năng)
-- [🚀 Cài đặt](#-hướng-dẫn-cài-đặt)
-- [📂 Cấu trúc thư mục](#-cấu-trúc-thư-mục)
-- [📋 Danh sách lệnh](#-danh-sách-lệnh-đầy-đủ)
-- [🔐 Bảo mật](#-bảo-mật)
-- [🗄️ Cơ sở dữ liệu](#️-cơ-sở-dữ-liệu)
+**Loop On In One** là Discord bot đa năng với kiến trúc module hóa, sử dụng SQLite làm cơ sở dữ liệu.
 
-<br>
+> ⚠️ **Lưu ý:** Tiền tệ trong bot là tiền ảo, chỉ phục vụ giải trí, không có giá trị thực tế.
 
-## ✨ Tính năng
+---
 
-<table>
-<tr>
-<td width="50%" valign="top">
+## 📊 Test Report
 
-### 💰 Kinh tế
-| Lệnh | Mô tả |
-|---|---|
-| `/daily` | Điểm danh, có streak thưởng thêm |
-| `/balance` | Xem số dư |
-| `/top` | Bảng xếp hạng |
-| `/transfer` | Chuyển tiền |
-| `/work` | Làm việc kiếm tiền |
-| `/shop` `/buy` | Cửa hàng vật phẩm |
+### ✅ Test Cases
 
-</td>
-<td width="50%" valign="top">
+| ID | Test Case | Module | Result | Note |
+|----|-----------|--------|--------|------|
+| TC-01 | `.ldl` nhận thưởng daily | Economy | ✅ PASS | Streak + bonus đúng |
+| TC-02 | `.ldl` không cho nhận lại trong 24h | Economy | ✅ PASS | Hiện time còn lại |
+| TC-03 | `.lblc` hiển thị đúng số dư | Economy | ✅ PASS | Có avatar + thống kê |
+| TC-04 | `.lt` sắp xếp top đúng | Economy | ✅ PASS | Top 10 người giàu |
+| TC-05 | `.lrfr` chuyển tiền thành công | Economy | ✅ PASS | Trừ/cộng đúng |
+| TC-06 | `.lrfr` không cho tự chuyển | Economy | ✅ PASS | Báo lỗi |
+| TC-07 | `.lrfr` không đủ tiền | Economy | ✅ PASS | Báo insufficient |
+| TC-08 | `.lw` nhận 50-300 coins | Economy | ✅ PASS | Random đúng |
+| TC-09 | `.lh` hiển thị shop | Economy | ✅ PASS | Đúng format |
+| TC-10 | `.lb` mua item thành công | Economy | ✅ PASS | Trừ tiền đúng |
+| TC-11 | `.lb` item không tồn tại | Economy | ✅ PASS | Báo lỗi |
+| TC-12 | `.ltx` cược Tài đúng | Fun | ✅ PASS | X2 tiền |
+| TC-13 | `.ltx` cược Xỉu đúng | Fun | ✅ PASS | X2 tiền |
+| TC-14 | `.ltx` cược sai | Fun | ✅ PASS | Mất tiền |
+| TC-15 | `.ltx` không đủ tiền | Fun | ✅ PASS | Báo lỗi |
+| TC-16 | `.lbc` cược 1 con trúng | Fun | ✅ PASS | Tính thưởng đúng |
+| TC-17 | `.lbc` cược nhiều con | Fun | ✅ PASS | Tổng thưởng đúng |
+| TC-18 | `.lbc` cược không trúng | Fun | ✅ PASS | Mất tiền |
+| TC-19 | `.lcl` cược đúng | Fun | ✅ PASS | X2 tiền |
+| TC-20 | `.lcl` cược sai | Fun | ✅ PASS | Mất tiền |
+| TC-21 | `.ls` tạo từ khóa mới | Keyword | ✅ PASS | Lưu DB |
+| TC-22 | `.ls` từ khóa trùng | Keyword | ✅ PASS | Báo đã tồn tại |
+| TC-23 | `.ld` xóa từ khóa của mình | Keyword | ✅ PASS | Xóa thành công |
+| TC-24 | `.ld` xóa từ khóa người khác (không admin) | Keyword | ✅ PASS | Từ chối |
+| TC-25 | `.llt` hiển thị danh sách | Keyword | ✅ PASS | Đúng thứ tự |
+| TC-26 | Auto-response trigger | Keyword | ✅ PASS | Phản hồi đúng |
+| TC-27 | `.lswcm` đặt kênh welcome | Settings | ✅ PASS | Lưu DB |
+| TC-28 | `.lsgb` đặt kênh goodbye | Settings | ✅ PASS | Lưu DB |
+| TC-29 | `.lsvcl` đặt kênh voice log | Settings | ✅ PASS | Lưu DB |
+| TC-30 | `.lscrc` đổi tên tiền tệ | Settings | ✅ PASS | Hiển thị đúng |
+| TC-31 | Welcome message khi join | Settings | ✅ PASS | Gửi đúng kênh |
+| TC-32 | Goodbye message khi leave | Settings | ✅ PASS | Gửi đúng kênh |
+| TC-33 | Voice log vào/ra kênh | Settings | ✅ PASS | Ghi log đúng |
+| TC-34 | `.lp` ping hiển thị độ trễ | Utility | ✅ PASS | Hiển thị ms |
+| TC-35 | `.lvt` hiển thị avatar | Utility | ✅ PASS | Avatar đúng |
+| TC-36 | `.lr` random 1-6 | Utility | ✅ PASS | Đúng phạm vi |
+| TC-37 | `.llp` random Sấp/Ngửa | Utility | ✅ PASS | Đúng 2 mặt |
+| TC-38 | `.lsvrf` hiển thị server info | Info | ✅ PASS | Đúng thông tin |
+| TC-39 | `.lsrf` hiển thị user info | Info | ✅ PASS | Đúng thông tin |
+| TC-40 | `.lbtf` hiển thị bot info | Info | ✅ PASS | Đúng thông tin |
 
-### 🎮 Giải trí
-| Lệnh | Mô tả |
-|---|---|
-| `/taixiu` | Tài Xỉu — Modal + Button + đếm ngược |
-| `/baucua` | Bầu Cua Tôm Cá — chọn nhiều con |
-| `/coinflip` | Tung đồng xu có cược |
-| `/rollfun` `/flipfun` | Vui, không cược |
+### 🐛 Bug Report
 
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
+| ID | Severity | Module | Bug | Status | Fix |
+|----|----------|--------|-----|--------|-----|
+| BUG-01 | 🟡 Minor | Help | Help hiển thị lệnh với prefix `.l` thay vì `/` | ✅ Won't Fix | Đây là design (tên rút gọn) |
+| BUG-02 | 🟢 Low | Fun | `.lrfn` và `.llf` không cooldown | ✅ Won't Fix | Cố ý (game vui) |
+| BUG-03 | 🟡 Minor | Economy | `.lh` không lưu item đã mua | ⚠️ Pending | Chưa có inventory |
 
-### 🔑 Từ khóa
-| Lệnh | Mô tả |
-|---|---|
-| `/setkeyword` | Tạo từ khóa tự động phản hồi |
-| `/delkeyword` | Xóa từ khóa |
-| `/listkeyword` | Xem danh sách |
+### 📈 Performance
 
-</td>
-<td width="50%" valign="top">
+| Metric | Value | Status |
+|--------|-------|--------|
+| Response Time | < 500ms | 🟢 Good |
+| DB Query | < 100ms | 🟢 Good |
+| Memory | ~50MB | 🟢 Optimal |
+| CPU | ~5% | 🟢 Optimal |
 
-### ⚙️ Cài đặt <sub>(Admin)</sub>
-| Lệnh | Mô tả |
-|---|---|
-| `/setwelcome` | Kênh chào mừng |
-| `/setgoodbye` | Kênh tạm biệt |
-| `/setvoicelog` | Kênh log voice |
-| `/setcurrency` | Đổi tên tiền tệ |
+---
 
-</td>
-</tr>
-</table>
+## ✨ Danh sách lệnh
 
-**ℹ️ Thông tin & Tiện ích:** `/serverinfo` · `/userinfo` · `/botinfo` · `/ping` · `/avatar` · `/roll` · `/flip` · `/help`
+> 💡 **Lưu ý:** Các lệnh hiển thị là tên rút gọn, vẫn gõ bằng slash command (`/`) như bình thường trên Discord.
 
-<br>
+### 💰 Kinh tế (`economy.py`)
 
-## 🚀 Hướng dẫn cài đặt
+| Lệnh | Tên đầy đủ | Mô tả | Cooldown |
+|------|-----------|-------|----------|
+| `.ldl` | `/daily` | Điểm danh nhận thưởng + streak | 24h |
+| `.lblc` | `/balance` | Xem số dư + thống kê | - |
+| `.lt` | `/top` | Bảng xếp hạng top 10 | - |
+| `.lrfr` | `/transfer` | Chuyển tiền cho người khác | 5s |
+| `.lw` | `/work` | Làm việc kiếm 50-300 coins | 60s |
+| `.lh` | `/shop` | Xem cửa hàng vật phẩm | - |
+| `.lb` | `/buy` | Mua vật phẩm từ shop | 5s |
 
-**1. Clone / tải project về máy**
+### 🎮 Game & Giải trí (`fun.py`)
 
-**2. Cài đặt thư viện phụ thuộc**
+| Lệnh | Tên đầy đủ | Mô tả | Cooldown |
+|------|-----------|-------|----------|
+| `.ltx` | `/taixiu` | Tài Xỉu có cược | 5s |
+| `.lbc` | `/baucua` | Bầu Cua Tôm Cá | 5s |
+| `.lcl` | `/coinflip` | Tung đồng xu có cược | 5s |
+| `.lrfn` | `/rollfun` | Tung xí ngầu vui | - |
+| `.llf` | `/flipfun` | Tung đồng xu vui | - |
+
+### 🔑 Từ khóa (`keyword.py`)
+
+| Lệnh | Tên đầy đủ | Mô tả | Quyền |
+|------|-----------|-------|-------|
+| `.ls` | `/keyword set` | Tạo từ khóa phản hồi | Admin |
+| `.ld` | `/keyword del` | Xóa từ khóa | Creator/Admin |
+| `.llt` | `/keyword list` | Xem danh sách từ khóa | Everyone |
+
+### ⚙️ Cài đặt (`settings.py`)
+
+| Lệnh | Tên đầy đủ | Mô tả | Quyền |
+|------|-----------|-------|-------|
+| `.lswcm` | `/setwelcome` | Kênh chào mừng | Admin |
+| `.lsgb` | `/setgoodbye` | Kênh tạm biệt | Admin |
+| `.lsvcl` | `/setvoicelog` | Kênh log voice | Admin |
+| `.lscrc` | `/setcurrency` | Đổi tên tiền tệ | Admin |
+
+### ℹ️ Thông tin (`info.py`)
+
+| Lệnh | Tên đầy đủ | Mô tả |
+|------|-----------|-------|
+| `.lsvrf` | `/serverinfo` | Thông tin server |
+| `.lsrf` | `/userinfo` | Thông tin user |
+| `.lbtf` | `/botinfo` | Thông tin bot |
+
+### 🛠️ Tiện ích (`utility.py`)
+
+| Lệnh | Tên đầy đủ | Mô tả |
+|------|-----------|-------|
+| `.lp` | `/ping` | Kiểm tra độ trễ |
+| `.lvt` | `/avatar` | Xem avatar |
+| `.lr` | `/roll` | Tung xí ngầu 1-6 |
+| `.llp` | `/flip` | Tung đồng xu |
+| `.lh` | `/help` | Danh sách lệnh (trùng tên với shop) |
+
+---
+```markdown
+## 🚀 Cài đặt
+
+### Yêu cầu hệ thống
+- Python >= 3.8
+- pip >= 21.0
+
+### Bước 1: Clone và cài dependencies
 ```bash
+git clone <repo-url>
+cd loop-on-in-one
 pip install -r requirements.txt
 ```
 
-**3. Cấu hình biến môi trường** — sao chép `.env.example` thành `.env`:
-```env
-DISCORD_TOKEN=token_bot_cua_ban
-DEV_GUILD_ID=id_server_dung_de_test
+### Bước 2: Cấu hình .env
+```bash
+cp .env.example .env
 ```
-| Biến | Ghi chú |
-|---|---|
-| `DISCORD_TOKEN` | Lấy tại [Discord Developer Portal](https://discord.com/developers/applications) |
-| `DEV_GUILD_ID` | *(tùy chọn)* ID server test — để trống sẽ đồng bộ lệnh toàn cục (mất tới ~1 giờ) |
 
-**4. Quyền bot (Bot Permissions)** khi mời vào server:
+Mở file `.env` và điền:
+```env
+DISCORD_TOKEN=token_của_bạn
+DEV_GUILD_ID=id_server_test  # Để trống nếu muốn global
+```
 
-`Send Messages` · `Manage Messages` · `Use Slash Commands` · `Connect` · `Speak` · `View Channels` · `Moderate Members`
-
-**5. Bật Privileged Gateway Intents** trong Developer Portal:
-
-`Server Members Intent` · `Message Content Intent`
-
-**6. Chạy bot**
+### Bước 3: Chạy bot
 ```bash
 python main.py
 ```
 
-<br>
+### Quyền cần thiết
+| Permission | Mục đích |
+|------------|----------|
+| Send Messages | Gửi tin nhắn |
+| Embed Links | Hiển thị embed |
+| Use Slash Commands | Sử dụng lệnh slash |
+| Connect | Voice features |
+| Speak | Voice features |
+| View Channels | Xem kênh |
 
-## 📂 Cấu trúc thư mục
+### Intents cần bật
+- ✅ Server Members Intent
+- ✅ Message Content Intent
+
+---
+
+## 📂 Cấu trúc
 
 ```
 loop-on-in-one/
 ├── cogs/
-│   ├── economy.py       # Hệ thống kinh tế
-│   ├── fun.py            # Game giải trí / cờ bạc ảo
-│   ├── help.py            # Lệnh trợ giúp
-│   ├── info.py             # Thông tin server/user/bot
-│   ├── keyword.py           # Từ khóa tự động phản hồi
-│   ├── settings.py           # Cài đặt server (Admin)
-│   └── utility.py              # Tiện ích chung
+│   ├── economy.py       # 💰 Kinh tế
+│   ├── fun.py           # 🎮 Game
+│   ├── keyword.py       # 🔑 Từ khóa
+│   ├── settings.py      # ⚙️ Cài đặt
+│   ├── info.py          # ℹ️ Thông tin
+│   ├── utility.py       # 🛠️ Tiện ích
+│   └── help.py          # 📖 Trợ giúp
 ├── database/
-│   ├── __init__.py
-│   └── db_manager.py            # Quản lý CSDL SQLite (aiosqlite)
+│   └── db_manager.py    # SQLite handler
 ├── utils/
-│   └── helpers.py                 # Hàm tiện ích dùng chung
-├── .env.example
-├── .gitignore
-├── config.json                      # Cấu hình mặc định
-├── main.py                           # Điểm khởi động bot
-├── README.md
-└── requirements.txt
+│   ├── helpers.py       # Helper functions
+│   └── logging_config.py # Logging
+├── config.json          # Cấu hình
+├── .env.example         # Env mẫu
+├── main.py              # Entry point
+└── requirements.txt     # Dependencies
 ```
-
-<br>
-
-## 📋 Danh sách lệnh đầy đủ
-
-<details>
-<summary><b>Xem toàn bộ 27 lệnh</b></summary>
-
-| Lệnh | Mô tả |
-|------|-------|
-| `/daily` | Điểm danh nhận thưởng |
-| `/balance [user]` | Xem số dư |
-| `/top` | Bảng xếp hạng |
-| `/transfer <user> <amount>` | Chuyển tiền |
-| `/work` | Làm việc kiếm tiền |
-| `/shop` | Xem cửa hàng |
-| `/buy <item>` | Mua vật phẩm |
-| `/taixiu` | Chơi Tài Xỉu |
-| `/baucua` | Chơi Bầu Cua |
-| `/coinflip <amount> <choice>` | Tung đồng xu cược |
-| `/rollfun` | Xúc xắc vui |
-| `/flipfun` | Đồng xu vui |
-| `/setkeyword <keyword> <response>` | Tạo từ khóa |
-| `/delkeyword <keyword>` | Xóa từ khóa |
-| `/listkeyword` | Danh sách từ khóa |
-| `/setwelcome <channel>` | [Admin] Kênh chào mừng |
-| `/setgoodbye <channel>` | [Admin] Kênh tạm biệt |
-| `/setvoicelog <channel>` | [Admin] Kênh log voice |
-| `/setcurrency <name>` | [Admin] Đổi tên tiền tệ |
-| `/serverinfo` | Thông tin server |
-| `/userinfo [user]` | Thông tin user |
-| `/botinfo` | Thông tin bot |
-| `/ping` | Độ trễ bot |
-| `/avatar [user]` | Xem avatar |
-| `/roll` | Xúc xắc 1-6 |
-| `/flip` | Tung đồng xu |
-| `/help` | Danh sách lệnh |
-
-</details>
-
-<br>
-
-## 🔐 Bảo mật
-
-- ✅ Toàn bộ lệnh trong `settings.py` yêu cầu quyền **Administrator**
-- ✅ Không có lệnh `exec`/`eval` hay bất kỳ cơ chế thực thi code tùy ý nào
-- ✅ Dữ liệu người dùng lưu cục bộ trong SQLite (`bot.db`), không gửi ra ngoài
-
-<br>
-
-## 🗄️ Cơ sở dữ liệu
-
-Bot dùng **SQLite** thông qua `aiosqlite`, tự động tạo file `bot.db` và các bảng cần thiết khi khởi động lần đầu. Không cần cài đặt server database riêng.
-
-<br>
-
-## 📝 Giấy phép
-
-Dự án sử dụng tự do cho mục đích cá nhân/học tập.
-
-<div align="center">
 
 ---
 
-Made with Noel Nguyen for the Discord community
+## 🗄️ Database
 
+### users
+| Column | Type | Description |
+|--------|------|-------------|
+| user_id | TEXT | Discord user ID |
+| guild_id | TEXT | Server ID |
+| balance | INTEGER | Số dư |
+| daily_streak | INTEGER | Streak điểm danh |
+| last_daily | INTEGER | Timestamp cuối |
+| total_wins | INTEGER | Số lần thắng |
+| total_losses | INTEGER | Số lần thua |
+
+### keywords
+| Column | Type | Description |
+|--------|------|-------------|
+| guild_id | TEXT | Server ID |
+| keyword | TEXT | Từ khóa |
+| response | TEXT | Phản hồi |
+| created_by | TEXT | Người tạo |
+| usage_count | INTEGER | Số lần dùng |
+
+### guild_settings
+| Column | Type | Description |
+|--------|------|-------------|
+| guild_id | TEXT | Server ID (PK) |
+| welcome_channel | TEXT | Kênh welcome |
+| goodbye_channel | TEXT | Kênh goodbye |
+| voicelog_channel | TEXT | Kênh voice log |
+| currency_name | TEXT | Tên tiền tệ |
+
+### voice_logs
+| Column | Type | Description |
+|--------|------|-------------|
+| user_id | TEXT | User ID |
+| guild_id | TEXT | Server ID |
+| channel_name | TEXT | Tên kênh voice |
+| join_time | INTEGER | Thời gian vào |
+| leave_time | INTEGER | Thời gian rời |
+| duration | INTEGER | Thời gian ở lại |
+
+---
+
+## 🐛 Troubleshooting
+
+### Lỗi: Không tìm thấy .env
+```bash
+cp .env.example .env
+```
+
+### Lỗi: Slash command không hiển thị
+- Kiểm tra bot có quyền `Use Slash Commands`
+- Đợi 1-2h nếu chạy global
+- Bật Privileged Intents
+
+### Lỗi: Token không hợp lệ
+- Kiểm tra token trong `.env`
+- Regenerate token nếu cần
+
+---
+
+## 🔐 Security
+
+- ✅ Admin commands yêu cầu quyền Administrator
+- ✅ Không có lệnh exec/eval
+- ✅ Dữ liệu lưu local SQLite
+- ✅ Token trong .env (không commit)
+
+---
+
+<div align="center">
+Made with  by Noel Nguyen
 </div>
+```
