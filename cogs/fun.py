@@ -326,12 +326,18 @@ class Fun(commands.Cog):
             return
  
         await self.db.update_balance(interaction.user.id, interaction.guild_id, -amount)
- 
+
+        # Hiệu ứng tung xu ngắn để đồng bộ trải nghiệm hồi hộp với Tài Xỉu / Bầu Cua
+        spin_embed = make_embed("🪙 Đang tung đồng xu...", "🎰 Kết quả sẽ có sau giây lát!", color=COLOR_COINFLIP)
+        await interaction.response.send_message(embed=spin_embed)
+        message = await interaction.original_response()
+        await asyncio.sleep(1.2)
+
         result = random.choice(["sap", "ngua"])
         result_text = "Sấp" if result == "sap" else "Ngửa"
         currency = await self.get_currency_name(interaction.guild_id)
         won = choice.value == result
- 
+
         if won:
             payout = amount * 2
             await self.db.update_balance(interaction.user.id, interaction.guild_id, payout)
@@ -346,8 +352,8 @@ class Fun(commands.Cog):
                 f"🪙 Đồng xu ra mặt: **{result_text}**\n😢 Bạn mất **{format_number(amount)} {currency}**.",
                 title="Thua cuộc",
             )
- 
-        await interaction.response.send_message(embed=embed)
+
+        await message.edit(embed=embed)
  
  
 async def setup(bot: commands.Bot):
