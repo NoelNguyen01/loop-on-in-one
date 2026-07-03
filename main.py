@@ -6,7 +6,6 @@ File khởi động chính của Discord Bot
 import os
 import sys
 import json
-import logging
 import asyncio
 from pathlib import Path
 
@@ -16,19 +15,12 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from database.db_manager import DBManager
+from utils.logging_config import setup_logging
 
 # ---------------------------------------------------------------
 # CẤU HÌNH LOGGING
 # ---------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.FileHandler("bot.log", encoding="utf-8"),
-        logging.StreamHandler(),
-    ],
-)
-logger = logging.getLogger("bot.main")
+logger = setup_logging("bot.log")
 
 # ---------------------------------------------------------------
 # NẠP BIẾN MÔI TRƯỜNG VÀ CONFIG
@@ -101,6 +93,7 @@ class LoopBot(commands.Bot):
             "cogs.keyword",
             "cogs.settings",
             "cogs.utility",
+            "cogs.wordchain",
         ]
 
         for cog in cogs_to_load:
