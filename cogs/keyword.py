@@ -1,6 +1,7 @@
 """
 cogs/keyword.py
 Hệ thống từ khóa tự động phản hồi
+Chỉ Admin mới được tạo từ khóa mới (tránh spam/lạm dụng); ai cũng xem được danh sách.
 """
 
 import logging
@@ -13,29 +14,66 @@ from utils.helpers import make_embed, success_embed, error_embed, check_admin
 
 logger = logging.getLogger("bot.keyword")
 
+# Giới hạn số lượng từ khóa tối đa mỗi server để tránh spam làm đầy database
+MAX_KEYWORDS_PER_GUILD = 100
+
 
 class Keyword(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.db = bot.db
+        self.config = bot.config
+        # Cache từ khóa theo guild để tránh query DB trên mỗi tin nhắn.
+        # Bị xóa (invalidate) mỗi khi có thêm/xóa từ khóa trong guild đó.
+        self._keyword_cache: dict[int, list] = {}
+
+    async def _get_cached_keywords(self, guild_id: int) -> list:
+        if guild_id not in self._keyword_cache:
+            self._keyword_cache[guild_id] = await self.db.get_all_keywords(guild_id)
+        return self._keyword_cache[guild_id]
+
+    def _invalidate_cache(self, guild_id: int):
+        self._keyword_cache.pop(guild_id, None)
 
     # -------------------------------------------------------------
     # /setkeyword
     # -------------------------------------------------------------
-    @app_commands.command(name="setkeyword", description="Tạo từ khóa tự động phản hồi")
+    @app_commands.command(name="setkeyword", description="[Admin] Tạo từ khóa tự động phản hồi")
     @app_commands.describe(keyword="Từ khóa kích hoạt", response="Nội dung bot sẽ trả lời")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.checks.cooldown(1, 5, key=lambda i: (i.guild_id, i.user.id))
     async def setkeyword(self, interaction: discord.Interaction, keyword: str, response: str):
         keyword = keyword.strip().lower()
         if len(keyword) < 2:
             await interaction.response.send_message(embed=error_embed("Từ khóa phải có ít nhất 2 ký tự."), ephemeral=True)
             return
 
+        current_count = await self.db.count_keywords(interaction.guild_id)
+        if current_count >= MAX_KEYWORDS_PER_GUILD:
+            await interaction.response.send_message(
+                embed=error_embed(f"Server đã đạt giới hạn **{MAX_KEYWORDS_PER_GUILD}** từ khóa. Hãy xóa bớt trước khi thêm mới."),
+                ephemeral=True,
+            )
+            return
+
         success = await self.db.add_keyword(interaction.guild_id, keyword, response, interaction.user.id)
         if success:
+            self._invalidate_cache(interaction.guild_id)
             embed = success_embed(f"Đã tạo từ khóa `{keyword}` → \"{response}\"")
         else:
             embed = error_embed(f"Từ khóa `{keyword}` đã tồn tại. Hãy xóa trước nếu muốn thay đổi.")
         await interaction.response.send_message(embed=embed)
+
+    @setkeyword.error
+    async def setkeyword_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, app_commands.CommandOnCooldown):
+            await interaction.response.send_message(
+                embed=error_embed(f"⏳ Vui lòng đợi **{error.retry_after:.1f} giây** trước khi tạo từ khóa tiếp theo."),
+                ephemeral=True,
+            )
+        else:
+            raise error
 
     # -------------------------------------------------------------
     # /delkeyword
@@ -61,6 +99,7 @@ class Keyword(commands.Cog):
             return
 
         await self.db.delete_keyword(interaction.guild_id, keyword)
+        self._invalidate_cache(interaction.guild_id)
         await interaction.response.send_message(embed=success_embed(f"Đã xóa từ khóa `{keyword}`."))
 
     # -------------------------------------------------------------
@@ -92,7 +131,7 @@ class Keyword(commands.Cog):
             return
 
         content_lower = message.content.lower()
-        rows = await self.db.get_all_keywords(message.guild.id)
+        rows = await self._get_cached_keywords(message.guild.id)  # dùng cache, không query DB mỗi tin nhắn
 
         for row in rows:
             if row["keyword"] in content_lower:
@@ -106,4 +145,3 @@ class Keyword(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Keyword(bot))
-
