@@ -27,8 +27,8 @@ HELP_DATA = {
         ("/flipfun", "Tung đồng xu vui (không cược)"),
     ],
     "🔑 Từ khóa": [
-        ("/setkeyword", "Tạo từ khóa tự động phản hồi"),
-        ("/delkeyword", "Xóa từ khóa"),
+        ("/setkeyword", "[Admin] Tạo từ khóa tự động phản hồi"),
+        ("/delkeyword", "Xóa từ khóa (chủ tạo hoặc Admin)"),
         ("/listkeyword", "Xem danh sách từ khóa"),
     ],
     "⚙️ Cài đặt (Admin)": [
