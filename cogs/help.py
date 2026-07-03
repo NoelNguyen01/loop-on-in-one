@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from utils.helpers import make_embed
+from utils.helpers import make_embed, COLOR_DEFAULT
 
 HELP_DATA = {
     "💰 Kinh tế": [
@@ -62,13 +62,20 @@ class Help(commands.Cog):
 
     @app_commands.command(name="help", description="Hiển thị danh sách tất cả lệnh của bot")
     async def help(self, interaction: discord.Interaction):
-        embed = make_embed("📖 Danh sách lệnh", "Dưới đây là tất cả các lệnh được nhóm theo chức năng:")
+        total_cmds = sum(len(v) for v in HELP_DATA.values())
+        embed = make_embed(
+            "📖 Danh sách lệnh",
+            f"Bot có tổng cộng **{total_cmds}** lệnh, nhóm theo từng chức năng bên dưới 👇",
+            color=COLOR_DEFAULT,
+        )
+        if self.bot.user:
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
         for group, commands_list in HELP_DATA.items():
             value = "\n".join(f"`{cmd}` — {desc}" for cmd, desc in commands_list)
             embed.add_field(name=group, value=value, inline=False)
 
-        embed.set_footer(text="Dùng lệnh slash (/) để tương tác với bot")
+        embed.set_footer(text="💡 Đây là tên rút gọn hiển thị — vẫn gõ bằng lệnh slash (/) như bình thường trên Discord")
         await interaction.response.send_message(embed=embed)
 
 
