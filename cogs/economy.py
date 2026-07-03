@@ -132,6 +132,7 @@ class Economy(commands.Cog):
     # -------------------------------------------------------------
     @app_commands.command(name="transfer", description="Chuyển tiền cho người khác")
     @app_commands.describe(user="Người nhận", amount="Số tiền muốn chuyển")
+    @app_commands.checks.cooldown(1, 5, key=lambda i: (i.guild_id, i.user.id))
     async def transfer(self, interaction: discord.Interaction, user: discord.Member, amount: app_commands.Range[int, 1]):
         if user.id == interaction.user.id:
             await interaction.response.send_message(embed=error_embed("Bạn không thể chuyển tiền cho chính mình."), ephemeral=True)
@@ -153,6 +154,16 @@ class Economy(commands.Cog):
             f"{interaction.user.mention} đã chuyển **{format_number(amount)} {currency}** cho {user.mention}."
         )
         await interaction.response.send_message(embed=embed)
+
+    @transfer.error
+    async def transfer_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, app_commands.CommandOnCooldown):
+            await interaction.response.send_message(
+                embed=error_embed(f"⏳ Vui lòng đợi **{error.retry_after:.1f} giây** trước khi chuyển tiền tiếp."),
+                ephemeral=True,
+            )
+        else:
+            raise error
 
     # -------------------------------------------------------------
     # /work
@@ -206,6 +217,7 @@ class Economy(commands.Cog):
     # -------------------------------------------------------------
     @app_commands.command(name="buy", description="Mua vật phẩm từ cửa hàng")
     @app_commands.describe(item="Mã vật phẩm muốn mua")
+    @app_commands.checks.cooldown(1, 5, key=lambda i: (i.guild_id, i.user.id))
     async def buy(self, interaction: discord.Interaction, item: str):
         item = item.lower()
         if item not in SHOP_ITEMS:
@@ -231,6 +243,16 @@ class Economy(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
+    @buy.error
+    async def buy_error(self, interaction: discord.Interaction, error):
+        if isinstance(error, app_commands.CommandOnCooldown):
+            await interaction.response.send_message(
+                embed=error_embed(f"⏳ Vui lòng đợi **{error.retry_after:.1f} giây** trước khi mua tiếp."),
+                ephemeral=True,
+            )
+        else:
+            raise error
+
     @buy.autocomplete("item")
     async def buy_autocomplete(self, interaction: discord.Interaction, current: str):
         return [
@@ -242,4 +264,3 @@ class Economy(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Economy(bot))
-
