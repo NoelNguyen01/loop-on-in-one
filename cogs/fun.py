@@ -116,7 +116,20 @@ class BauCuaBetModal(discord.ui.Modal, title="Đặt cược Bầu Cua"):
                 ephemeral=True,
             )
             return
- 
+
+        # Giới hạn max_bet áp cho TỔNG tiền cược, không chỉ tiền cược mỗi con,
+        # để tránh lách luật bằng cách chọn nhiều con cùng lúc.
+        if total_cost > max_bet:
+            await interaction.response.send_message(
+                embed=error_embed(
+                    f"Tổng tiền cược (**{format_number(amount)}** × {len(self.choices)} con = "
+                    f"**{format_number(total_cost)}**) vượt quá mức cược tối đa **{format_number(max_bet)}**. "
+                    f"Hãy chọn ít con hơn hoặc cược ít tiền hơn mỗi con."
+                ),
+                ephemeral=True,
+            )
+            return
+
         user_row = await self.cog.db.get_user(interaction.user.id, interaction.guild_id)
         if user_row["balance"] < total_cost:
             await interaction.response.send_message(
@@ -167,6 +180,7 @@ class Fun(commands.Cog):
     # /taixiu
     # -------------------------------------------------------------
     @app_commands.command(name="taixiu", description="Chơi Tài Xỉu - đặt cược và đoán kết quả")
+    @app_commands.checks.cooldown(1, 5, key=lambda i: (i.guild_id, i.user.id))
     async def taixiu(self, interaction: discord.Interaction):
         embed = make_embed(
             "🎲 TÀI XỈU",
@@ -224,6 +238,7 @@ class Fun(commands.Cog):
     # /baucua
     # -------------------------------------------------------------
     @app_commands.command(name="baucua", description="Chơi Bầu Cua Tôm Cá")
+    @app_commands.checks.cooldown(1, 5, key=lambda i: (i.guild_id, i.user.id))
     async def baucua(self, interaction: discord.Interaction):
         animals_str = "  ".join(f"{v} {BAUCUA_NAMES_VI[k]}" for k, v in BAUCUA_ANIMALS.items())
         embed = make_embed(
@@ -290,6 +305,7 @@ class Fun(commands.Cog):
         app_commands.Choice(name="Sấp", value="sap"),
         app_commands.Choice(name="Ngửa", value="ngua"),
     ])
+    @app_commands.checks.cooldown(1, 5, key=lambda i: (i.guild_id, i.user.id))
     async def coinflip(self, interaction: discord.Interaction, amount: app_commands.Range[int, 1], choice: app_commands.Choice[str]):
         min_bet = self.config["min_bet"]
         max_bet = self.config["max_bet"]
