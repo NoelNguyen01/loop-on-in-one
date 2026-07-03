@@ -119,14 +119,17 @@ class LoopBot(commands.Bot):
             if DEV_GUILD_ID:
                 guild = discord.Object(id=int(DEV_GUILD_ID))
 
-                # Xóa sạch lệnh global trước, rồi đẩy việc xóa đó lên Discord.
-                # Nếu không làm bước này, lệnh global cũ (từ lần chạy trước) vẫn
-                # còn tồn tại song song với bản copy trong guild -> trùng lệnh.
+                # QUAN TRỌNG VỀ THỨ TỰ: phải copy_global_to() + sync(guild) TRƯỚC,
+                # rồi mới clear_commands(guild=None) SAU. Nếu clear global trước,
+                # self.tree sẽ mất luôn danh sách lệnh global trong bộ nhớ, khiến
+                # copy_global_to() không còn gì để copy -> mất lệnh ở cả 2 nơi.
+                self.tree.copy_global_to(guild=guild)
+                synced = await self.tree.sync(guild=guild)
+
+                # Giờ mới xóa lệnh global khỏi Discord (an toàn vì đã copy xong)
                 self.tree.clear_commands(guild=None)
                 await self.tree.sync()
 
-                self.tree.copy_global_to(guild=guild)
-                synced = await self.tree.sync(guild=guild)
                 logger.info(
                     f"Đã đồng bộ {len(synced)} slash command tới guild dev {DEV_GUILD_ID} "
                     f"(đã xóa bản global cũ để tránh trùng lệnh)"
