@@ -1,13 +1,9 @@
-
 {
-    "prefix": "!",
-    "bot_name": "LOOP ON IN ONE",
-    "embed_color": "#00D4FF",
-    "version": "1.0.0",
-    "description": "Discord bot đa năng - Loop On In One",
-    "owner_id": 123456789012345678,
-    "welcome_channel": "welcome",
-    "log_channel": "bot-logs",
-    "max_warns": 5,
-    "default_cooldown": 3
+    "default_currency": "coins",
+    "daily_min": 100,
+    "daily_max": 500,
+    "embed_color": "#00ff00",
+    "cooldown_seconds": 5,
+    "max_bet": 50000,
+    "min_bet": 100
 }
