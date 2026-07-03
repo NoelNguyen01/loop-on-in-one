@@ -4,7 +4,7 @@
 
 ### Discord Bot đa năng — Kinh tế ảo · Game giải trí · Tự động hóa · Quản lý server
 
-![Version](https://img.shields.io/badge/Version-1.0.0-5865F2?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-2.0.0-5865F2?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python)
 ![discord.py](https://img.shields.io/badge/discord.py-2.3%2B-5865F2?style=for-the-badge&logo=discord)
 ![Status](https://img.shields.io/badge/Status-Active-57F287?style=for-the-badge)
@@ -87,6 +87,9 @@
 | BUG-01 | 🟡 Minor | Help | Help hiển thị lệnh với prefix `.l` thay vì `/` | ✅ Won't Fix | Đây là design (tên rút gọn) |
 | BUG-02 | 🟢 Low | Fun | `.lrfn` và `.llf` không cooldown | ✅ Won't Fix | Cố ý (game vui) |
 | BUG-03 | 🟡 Minor | Economy | `.lh` không lưu item đã mua | ⚠️ Pending | Chưa có inventory |
+| BUG-04 | 🔴 Major | Help | `/help` liệt kê nhóm "Nối từ" (`.ltt`/`.ltp`/`.ldm`) nhưng tính năng này chưa từng được cài đặt — `cogs/wordchain.py` chỉ là bản sao lỗi của `keyword.py`, không được load trong `main.py` | ✅ Đã xây dựng thật | Viết lại `wordchain.py` với game Nối Từ hoạt động thật (VI/EN), đăng ký cog trong `main.py` |
+| BUG-05 | 🟢 Low | Config | `config.json["embed_color"]` được khai báo nhưng không nơi nào đọc, đổi màu không có tác dụng | ✅ Fixed | `helpers.py` giờ đọc màu này làm `COLOR_DEFAULT` |
+| BUG-06 | 🟢 Low | Logging | `utils/logging_config.py` (log có màu/icon) được viết sẵn nhưng `main.py` không gọi tới, dùng `basicConfig` thô thay thế | ✅ Fixed | `main.py` giờ gọi `setup_logging()` |
 
 ### 📈 Performance
 
@@ -150,6 +153,14 @@
 | `.lsrf` | `/userinfo` | Thông tin user |
 | `.lbtf` | `/botinfo` | Thông tin bot |
 
+### 🔤 Nối từ (`wordchain.py`)
+
+| Lệnh | Tên đầy đủ | Mô tả | Ghi chú |
+|------|-----------|-------|---------|
+| `.ltt` | `/noitu start` | Bắt đầu ván nối từ (chọn Tiếng Việt/English) | Chơi bằng cách gõ từ thẳng vào kênh |
+| `.ltp` | `/noitu stop` | Dừng ván nối từ trong kênh | Chỉ người tạo ván hoặc Admin |
+| `.ldm` | `/noitu score` | Xem bảng điểm ván nối từ hiện tại | Điểm reset khi ván kết thúc |
+
 ### 🛠️ Tiện ích (`utility.py`)
 
 | Lệnh | Tên đầy đủ | Mô tả |
@@ -158,10 +169,10 @@
 | `.lvt` | `/avatar` | Xem avatar |
 | `.lr` | `/roll` | Tung xí ngầu 1-6 |
 | `.llp` | `/flip` | Tung đồng xu |
-| `.lh` | `/help` | Danh sách lệnh (trùng tên với shop) |
+| `.lhlp` | `/help` | Danh sách lệnh |
 
 ---
-```markdown
+
 ## 🚀 Cài đặt
 
 ### Yêu cầu hệ thống
@@ -218,6 +229,7 @@ loop-on-in-one/
 │   ├── settings.py      # ⚙️ Cài đặt
 │   ├── info.py          # ℹ️ Thông tin
 │   ├── utility.py       # 🛠️ Tiện ích
+│   ├── wordchain.py     # 🔤 Nối từ
 │   └── help.py          # 📖 Trợ giúp
 ├── database/
 │   └── db_manager.py    # SQLite handler
@@ -303,6 +315,5 @@ cp .env.example .env
 ---
 
 <div align="center">
-Made with  by Noel Nguyen
+Made with ❤️ by Noel Nguyen
 </div>
-```
