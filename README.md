@@ -4,7 +4,7 @@
 
 ### Discord Bot đa năng — Kinh tế ảo · Game giải trí · Tự động hóa · Quản lý server
 
-![Version](https://img.shields.io/badge/Version-2.0.0-5865F2?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-1.0.0-5865F2?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python)
 ![discord.py](https://img.shields.io/badge/discord.py-2.3%2B-5865F2?style=for-the-badge&logo=discord)
 ![Status](https://img.shields.io/badge/Status-Active-57F287?style=for-the-badge)
@@ -86,7 +86,7 @@
 |----|----------|--------|-----|--------|-----|
 | BUG-01 | 🟡 Minor | Help | Help hiển thị lệnh với prefix `.l` thay vì `/` | ✅ Won't Fix | Đây là design (tên rút gọn) |
 | BUG-02 | 🟢 Low | Fun | `.lrfn` và `.llf` không cooldown | ✅ Won't Fix | Cố ý (game vui) |
-| BUG-03 | 🟡 Minor | Economy | `.lh` không lưu item đã mua | ⚠️ Pending | Chưa có inventory |
+| BUG-03 | 🟡 Minor | Economy | `.lh` không lưu item đã mua | ✅ Fixed | Thêm bảng `inventory` + lệnh `/inventory`, `/buy` giờ chặn mua trùng danh hiệu |
 | BUG-04 | 🔴 Major | Help | `/help` liệt kê nhóm "Nối từ" (`.ltt`/`.ltp`/`.ldm`) nhưng tính năng này chưa từng được cài đặt — `cogs/wordchain.py` chỉ là bản sao lỗi của `keyword.py`, không được load trong `main.py` | ✅ Đã xây dựng thật | Viết lại `wordchain.py` với game Nối Từ hoạt động thật (VI/EN), đăng ký cog trong `main.py` |
 | BUG-05 | 🟢 Low | Config | `config.json["embed_color"]` được khai báo nhưng không nơi nào đọc, đổi màu không có tác dụng | ✅ Fixed | `helpers.py` giờ đọc màu này làm `COLOR_DEFAULT` |
 | BUG-06 | 🟢 Low | Logging | `utils/logging_config.py` (log có màu/icon) được viết sẵn nhưng `main.py` không gọi tới, dùng `basicConfig` thô thay thế | ✅ Fixed | `main.py` giờ gọi `setup_logging()` |
@@ -117,6 +117,7 @@
 | `.lw` | `/work` | Làm việc kiếm 50-300 coins | 60s |
 | `.lh` | `/shop` | Xem cửa hàng vật phẩm | - |
 | `.lb` | `/buy` | Mua vật phẩm từ shop | 5s |
+| `.lkho` | `/inventory` | Xem túi đồ vật phẩm đã mua | - |
 
 ### 🎮 Game & Giải trí (`fun.py`)
 
@@ -284,6 +285,15 @@ loop-on-in-one/
 | join_time | INTEGER | Thời gian vào |
 | leave_time | INTEGER | Thời gian rời |
 | duration | INTEGER | Thời gian ở lại |
+
+### inventory
+| Column | Type | Description |
+|--------|------|-------------|
+| user_id | TEXT | Discord user ID |
+| guild_id | TEXT | Server ID |
+| item_id | TEXT | Mã vật phẩm (khớp với `SHOP_ITEMS` trong `economy.py`) |
+| quantity | INTEGER | Số lượng sở hữu |
+| purchased_at | INTEGER | Timestamp lần mua gần nhất |
 
 ---
 
