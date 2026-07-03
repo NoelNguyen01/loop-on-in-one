@@ -18,6 +18,7 @@ HELP_DATA = {
         (".lw", "Làm việc kiếm tiền (cooldown 1 phút)"),
         (".lh", "Xem cửa hàng vật phẩm"),
         (".lb", "Mua vật phẩm từ cửa hàng"),
+        (".lkho", "Xem túi đồ vật phẩm đã mua"),
     ],
     "🎮 Giải trí & Game": [
         (".ltx", "Chơi Tài Xỉu có cược"),
@@ -81,4 +82,3 @@ class Help(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Help(bot))
-
