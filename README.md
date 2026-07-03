@@ -3,13 +3,10 @@
 # 🎲 Loop On In One
 
 ### Discord Bot đa năng — Kinh tế ảo · Game giải trí · Từ khóa tự động · Quản lý server
-
-![Version](https://img.shields.io/badge/version-1.0.0-blue?style=for-the-badge)
-![Python](https://img.shields.io/badge/python-3.8%2B-green?style=for-the-badge&logo=python&logoColor=white)
-![discord.py](https://img.shields.io/badge/discord.py-2.3%2B-5865F2?style=for-the-badge&logo=discord&logoColor=white)
-![Status](https://img.shields.io/badge/status-active-brightgreen?style=for-the-badge)
-![License](https://img.shields.io/badge/license-MIT-lightgrey?style=for-the-badge)
-
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Python](https://img.shields.io/badge/python-3.8%2B-green
+)![Discord](https://img.shields.io/badge/discord.py-py-blueviolet)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
 </div>
 
 <br>
