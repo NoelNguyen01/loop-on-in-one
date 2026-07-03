@@ -3,14 +3,38 @@ helpers.py
 Các hàm tiện ích dùng chung cho toàn bộ bot
 """
 
+import json
+import logging
+from pathlib import Path
+
 import discord
 from datetime import datetime, timezone
+
+logger = logging.getLogger("bot.helpers")
+
+
+def _load_default_color() -> int:
+    """Đọc 'embed_color' từ config.json (dạng '#RRGGBB') nếu có, để field này
+    trong config.json thực sự có tác dụng thay vì bị bỏ quên. Nếu thiếu/lỗi,
+    dùng màu blurple mặc định của Discord."""
+    fallback = 0x5865F2
+    try:
+        config_path = Path(__file__).resolve().parent.parent / "config.json"
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        raw = config.get("embed_color")
+        if raw:
+            return int(str(raw).lstrip("#"), 16)
+    except Exception as e:
+        logger.warning(f"Không đọc được embed_color từ config.json, dùng màu mặc định: {e}")
+    return fallback
+
 
 # =====================================================================
 # MÀU SẮC
 # =====================================================================
 # Màu chức năng (trạng thái) - dùng cho success/error/info/warning
-COLOR_DEFAULT = 0x5865F2   # Blurple - màu mặc định khi không thuộc nhóm nào
+COLOR_DEFAULT = _load_default_color()   # Lấy từ config.json["embed_color"], fallback blurple nếu thiếu
 COLOR_SUCCESS = 0x57F287   # Xanh lá tươi
 COLOR_ERROR = 0xED4245     # Đỏ
 COLOR_INFO = 0x00B0F4      # Xanh dương nhạt
