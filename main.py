@@ -4,9 +4,11 @@ File khởi động chính của Discord Bot
 """
 
 import os
+import sys
 import json
 import logging
 import asyncio
+from pathlib import Path
 
 import discord
 from discord import app_commands
@@ -31,11 +33,45 @@ logger = logging.getLogger("bot.main")
 # ---------------------------------------------------------------
 # NẠP BIẾN MÔI TRƯỜNG VÀ CONFIG
 # ---------------------------------------------------------------
-load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")
-DEV_GUILD_ID = os.getenv("DEV_GUILD_ID")
+BASE_DIR = Path(__file__).resolve().parent
+ENV_PATH = BASE_DIR / ".env"
 
-with open("config.json", "r", encoding="utf-8") as f:
+
+def validate_env_or_exit():
+    """Kiểm tra cấu hình .env ngay khi khởi động, gộp chung mọi trường hợp lỗi
+    liên quan đến token vào MỘT chỗ duy nhất thay vì rải rác nhiều nơi."""
+    if not ENV_PATH.exists():
+        # Lỗi thường gặp: người dùng sửa token trực tiếp vào ".env.example" rồi chạy bot.
+        # load_dotenv() CHỈ đọc file tên đúng là ".env", nên sửa ".env.example" sẽ
+        # không có tác dụng gì - TOKEN vẫn luôn rỗng.
+        logger.error(
+            "Không tìm thấy file '.env' tại %s.\n"
+            "  -> Hãy TẠO file '.env' (sao chép từ '.env.example'), KHÔNG sửa trực tiếp '.env.example'.\n"
+            "     Ví dụ (Linux/macOS): cp .env.example .env\n"
+            "     Ví dụ (Windows CMD): copy .env.example .env\n"
+            "  -> Sau đó mở '.env' và điền DISCORD_TOKEN thật vào.",
+            ENV_PATH,
+        )
+        sys.exit(1)
+
+    load_dotenv(dotenv_path=ENV_PATH)
+    token = os.getenv("DISCORD_TOKEN", "").strip()
+    if not token:
+        # File .env tồn tại nhưng DISCORD_TOKEN để trống hoặc chưa điền
+        logger.error(
+            "File '.env' tồn tại nhưng DISCORD_TOKEN đang trống.\n"
+            "  -> Mở file '.env' và điền token thật lấy từ "
+            "https://discord.com/developers/applications vào dòng DISCORD_TOKEN=..."
+        )
+        sys.exit(1)
+
+    dev_guild_id = os.getenv("DEV_GUILD_ID", "").strip() or None
+    return token, dev_guild_id
+
+
+TOKEN, DEV_GUILD_ID = validate_env_or_exit()
+
+with open(BASE_DIR / "config.json", "r", encoding="utf-8") as f:
     CONFIG = json.load(f)
 
 # ---------------------------------------------------------------
@@ -142,9 +178,8 @@ async def on_command_error(ctx, error):
 # CHẠY BOT
 # ---------------------------------------------------------------
 async def main():
-    if not TOKEN:
-        logger.error("Không tìm thấy DISCORD_TOKEN trong file .env! Vui lòng cấu hình trước khi chạy.")
-        return
+    # TOKEN đã được kiểm tra hợp lệ ở validate_env_or_exit() ngay khi module này
+    # được nạp (đầu file) - không cần kiểm tra lại ở đây nữa.
     async with bot:
         await bot.start(TOKEN)
 
