@@ -111,13 +111,40 @@ class LoopBot(commands.Bot):
                 logger.error(f"Lỗi khi tải cog {cog}: {e}", exc_info=True)
 
         # Đồng bộ slash command
+        # QUAN TRỌNG: 1 lệnh chỉ nên tồn tại ở MỘT phạm vi (global HOẶC guild),
+        # không phải cả hai - nếu không Discord sẽ hiện lệnh bị trùng x2 (như khi
+        # trước đây từng sync global rồi sau đó lại thêm DEV_GUILD_ID mà không
+        # xóa bản global cũ đi).
         try:
             if DEV_GUILD_ID:
                 guild = discord.Object(id=int(DEV_GUILD_ID))
+
+                # Xóa sạch lệnh global trước, rồi đẩy việc xóa đó lên Discord.
+                # Nếu không làm bước này, lệnh global cũ (từ lần chạy trước) vẫn
+                # còn tồn tại song song với bản copy trong guild -> trùng lệnh.
+                self.tree.clear_commands(guild=None)
+                await self.tree.sync()
+
                 self.tree.copy_global_to(guild=guild)
                 synced = await self.tree.sync(guild=guild)
-                logger.info(f"Đã đồng bộ {len(synced)} slash command tới guild dev {DEV_GUILD_ID}")
+                logger.info(
+                    f"Đã đồng bộ {len(synced)} slash command tới guild dev {DEV_GUILD_ID} "
+                    f"(đã xóa bản global cũ để tránh trùng lệnh)"
+                )
             else:
+                # Dọn lệnh guild-specific còn sót lại (từ lần chạy trước có
+                # DEV_GUILD_ID) ở TẤT CẢ guild bot đang tham gia, để tránh
+                # trùng lệnh khi chuyển từ chế độ dev-guild sang global.
+                # Lưu ý: self.guilds chưa có dữ liệu ở setup_hook (cache guild
+                # chỉ được nạp sau khi kết nối gateway), nên phải dùng
+                # fetch_guilds() để gọi thẳng REST API thay vì đọc cache rỗng.
+                async for guild in self.fetch_guilds(limit=None):
+                    try:
+                        self.tree.clear_commands(guild=guild)
+                        await self.tree.sync(guild=guild)
+                    except Exception as e:
+                        logger.warning(f"Không thể dọn lệnh guild-specific cũ ở {guild.id}: {e}")
+
                 synced = await self.tree.sync()
                 logger.info(f"Đã đồng bộ {len(synced)} slash command toàn cục")
         except Exception as e:
