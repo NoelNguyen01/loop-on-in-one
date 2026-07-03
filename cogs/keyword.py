@@ -2,6 +2,9 @@
 cogs/keyword.py
 Hệ thống từ khóa tự động phản hồi
 Chỉ Admin mới được tạo từ khóa mới (tránh spam/lạm dụng); ai cũng xem được danh sách.
+
+Gộp 3 lệnh set/del/list vào 1 nhóm lệnh "/keyword" (subcommand) để danh sách
+slash command của bot gọn hơn: /keyword set, /keyword del, /keyword list
 """
 
 import logging
@@ -36,14 +39,19 @@ class Keyword(commands.Cog):
         self._keyword_cache.pop(guild_id, None)
 
     # -------------------------------------------------------------
-    # /setkeyword
+    # Nhóm lệnh /keyword
     # -------------------------------------------------------------
-    @app_commands.command(name="setkeyword", description="[Admin] Tạo từ khóa tự động phản hồi")
+    keyword_group = app_commands.Group(name="keyword", description="Quản lý từ khóa tự động phản hồi")
+
+    # -------------------------------------------------------------
+    # /keyword set
+    # -------------------------------------------------------------
+    @keyword_group.command(name="set", description="[Admin] Tạo từ khóa tự động phản hồi")
     @app_commands.describe(keyword="Từ khóa kích hoạt", response="Nội dung bot sẽ trả lời")
     @app_commands.default_permissions(administrator=True)
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.checks.cooldown(1, 5, key=lambda i: (i.guild_id, i.user.id))
-    async def setkeyword(self, interaction: discord.Interaction, keyword: str, response: str):
+    async def keyword_set(self, interaction: discord.Interaction, keyword: str, response: str):
         keyword = keyword.strip().lower()
         if len(keyword) < 2:
             await interaction.response.send_message(embed=error_embed("Từ khóa phải có ít nhất 2 ký tự."), ephemeral=True)
@@ -65,8 +73,8 @@ class Keyword(commands.Cog):
             embed = error_embed(f"Từ khóa `{keyword}` đã tồn tại. Hãy xóa trước nếu muốn thay đổi.")
         await interaction.response.send_message(embed=embed)
 
-    @setkeyword.error
-    async def setkeyword_error(self, interaction: discord.Interaction, error):
+    @keyword_set.error
+    async def keyword_set_error(self, interaction: discord.Interaction, error):
         if isinstance(error, app_commands.CommandOnCooldown):
             await interaction.response.send_message(
                 embed=error_embed(f"⏳ Vui lòng đợi **{error.retry_after:.1f} giây** trước khi tạo từ khóa tiếp theo."),
@@ -76,11 +84,11 @@ class Keyword(commands.Cog):
             raise error
 
     # -------------------------------------------------------------
-    # /delkeyword
+    # /keyword del
     # -------------------------------------------------------------
-    @app_commands.command(name="delkeyword", description="Xóa một từ khóa")
+    @keyword_group.command(name="del", description="Xóa một từ khóa")
     @app_commands.describe(keyword="Từ khóa cần xóa")
-    async def delkeyword(self, interaction: discord.Interaction, keyword: str):
+    async def keyword_del(self, interaction: discord.Interaction, keyword: str):
         keyword = keyword.strip().lower()
         existing = await self.db.get_keyword(interaction.guild_id, keyword)
 
@@ -103,10 +111,10 @@ class Keyword(commands.Cog):
         await interaction.response.send_message(embed=success_embed(f"Đã xóa từ khóa `{keyword}`."))
 
     # -------------------------------------------------------------
-    # /listkeyword
+    # /keyword list
     # -------------------------------------------------------------
-    @app_commands.command(name="listkeyword", description="Xem danh sách từ khóa trong server")
-    async def listkeyword(self, interaction: discord.Interaction):
+    @keyword_group.command(name="list", description="Xem danh sách từ khóa trong server")
+    async def keyword_list(self, interaction: discord.Interaction):
         rows = await self.db.get_all_keywords(interaction.guild_id)
 
         if not rows:
@@ -144,4 +152,8 @@ class Keyword(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
+    # Lưu ý: app_commands.Group được khai báo là class attribute (keyword_group)
+    # nên discord.py sẽ TỰ ĐỘNG đăng ký nhóm lệnh này vào command tree khi
+    # add_cog() chạy - không cần gọi bot.tree.add_command() thủ công (nếu gọi
+    # thêm sẽ bị lỗi "command already registered").
     await bot.add_cog(Keyword(bot))
